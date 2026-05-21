@@ -1,0 +1,28 @@
+DANH SÁCH TÀI KHOẢN TEST THEO PHÂN QUYỀN (UAV ID SYSTEM)
+=========================================================
+
+1. Phân quyền: ADMIN (Quản trị viên)
+   - Email: admin@uavid.vn
+   - Mật khẩu: Admin@123456
+   - Vai trò: Quản lý người dùng, duyệt hồ sơ định danh, cấu hình hệ thống, quản lý danh mục.
+
+2. Phân quyền: POLICE (Cảnh sát hàng không)
+   - Tài khoản 1:
+     * Email: police1@uavid.vn
+     * Mật khẩu: Police@123456
+   - Tài khoản 2:
+     * Email: police2@uavid.vn
+     * Mật khẩu: Police@123456
+   - Vai trò: Ghi nhận vi phạm, kiểm tra thực địa UAV.
+
+3. Phân quyền: USER (Chủ sở hữu UAV)
+   - Tài khoản 1:
+     * Email: user1@uavid.vn
+     * Mật khẩu: User@123456
+   - Tài khoản 2:
+     * Email: user2@uavid.vn
+     * Mật khẩu: User@123456
+   - Tài khoản 3:
+     * Email: user3@uavid.vn
+     * Mật khẩu: User@123456
+   - Vai trò: Quản lý máy bay cá nhân, nộp đơn xin cấp mã định danh, xin cấp phép bay.
