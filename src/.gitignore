@@ -37,8 +37,6 @@ desktop.ini
 .AppleDouble
 .LSOverride
 
-# Database and sensitive local files
-*.sql
 # tài khoản.txt
 
 # Environment variables
