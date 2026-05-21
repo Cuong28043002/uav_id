@@ -1,6 +1,6 @@
 const QRCode = require('qrcode');
 const { v4: uuidv4 } = require('uuid');
-const { Registration, Drone, User, Notification } = require('../models');
+const { Registration, Drone, User, Notification, Manufacturer, DroneCategory } = require('../models');
 const { paginationParams, paginationMeta } = require('../utils/helpers');
 const { Op } = require('sequelize');
 
