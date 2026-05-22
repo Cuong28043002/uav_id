@@ -17,6 +17,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import axiosClient from '../../api/axiosClient';
 import Alert from '../../components/CustomAlert';
 
+const formatCurrency = (amount) => {
+  if (!amount && amount !== 0) return 'Cảnh cáo';
+  const numericAmount = Math.round(parseFloat(amount));
+  if (numericAmount === 0) return 'Cảnh cáo';
+  return numericAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' VNĐ';
+};
+
 const DroneDetail = ({ route, navigation }) => {
   const { droneId } = route.params || {};
   const [loading, setLoading] = useState(true);
@@ -179,7 +186,7 @@ const DroneDetail = ({ route, navigation }) => {
         Ngày ghi nhận: {new Date(item.date_recorded).toLocaleDateString('vi-VN')}
       </Text>
       <Text style={styles.violationFine}>
-        Mức phạt: {item.fine_amount ? `${item.fine_amount.toLocaleString('vi-VN')} VNĐ` : 'Cảnh cáo'}
+        Mức phạt: {formatCurrency(item.fine_amount)}
       </Text>
     </TouchableOpacity>
   );

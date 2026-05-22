@@ -15,6 +15,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import axiosClient from '../../api/axiosClient';
 import Alert from '../../components/CustomAlert';
 
+const formatCurrency = (amount) => {
+  if (!amount && amount !== 0) return 'Cảnh cáo';
+  const numericAmount = Math.round(parseFloat(amount));
+  if (numericAmount === 0) return 'Cảnh cáo';
+  return numericAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' VNĐ';
+};
+
 const MyViolations = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('unpaid');
   const [violations, setViolations] = useState([]);
@@ -46,7 +53,7 @@ const MyViolations = ({ navigation }) => {
   const handlePayMock = (item) => {
     Alert.alert(
       'Thanh toán điện tử',
-      `Bạn đang thực hiện nộp phạt trực tuyến cho lỗi [${item.violation_type}] với số tiền ${item.fine_amount?.toLocaleString('vi-VN')} VNĐ.\n\nHệ thống sẽ chuyển hướng đến cổng dịch vụ công.`,
+      `Bạn đang thực hiện nộp phạt trực tuyến cho lỗi [${item.violation_type}] với số tiền ${formatCurrency(item.fine_amount)}.\n\nHệ thống sẽ chuyển hướng đến cổng dịch vụ công.`,
       [
         { text: 'Hủy', style: 'cancel' },
         {
@@ -89,7 +96,7 @@ const MyViolations = ({ navigation }) => {
           <Text style={styles.violationType}>{item.violation_type}</Text>
         </View>
         <Text style={[styles.fineAmount, { color: activeTab === 'unpaid' ? '#EF4444' : '#10B981' }]}>
-          {item.fine_amount ? `${item.fine_amount.toLocaleString('vi-VN')}đ` : 'Cảnh cáo'}
+          {formatCurrency(item.fine_amount)}
         </Text>
       </View>
       <View style={styles.divider} />

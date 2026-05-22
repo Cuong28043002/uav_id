@@ -27,6 +27,7 @@ import LiveFlight from '../screens/user/LiveFlight';
 import DroneDetail from '../screens/shared/DroneDetail';
 import ViolationDetail from '../screens/shared/ViolationDetail';
 import FlightPermitDetail from '../screens/shared/FlightPermitDetail';
+import SystemViolations from '../screens/shared/SystemViolations';
 import ApproveDrones from '../screens/admin/ApproveDrones';
 
 // Custom Alert
@@ -112,6 +113,7 @@ const AppNavigator = () => {
             <Stack.Screen name="DroneDetail" component={DroneDetail} />
             <Stack.Screen name="ViolationDetail" component={ViolationDetail} />
             <Stack.Screen name="FlightPermitDetail" component={FlightPermitDetail} />
+            <Stack.Screen name="SystemViolations" component={SystemViolations} />
             <Stack.Screen name="ApproveDrones" component={ApproveDrones} />
           </>
         )}

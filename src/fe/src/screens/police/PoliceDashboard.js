@@ -360,6 +360,19 @@ const PoliceDashboard = ({ navigation }) => {
                 <Text style={styles.actionCardTitle}>Lập BB vi phạm</Text>
                 <Text style={styles.actionCardDesc}>Ghi nhận UAV bay không phép hoặc vào vùng cấm</Text>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.actionCard, { borderColor: '#E2E8F0', width: '100%', flexDirection: 'row', alignItems: 'center', gap: 14 }]}
+                onPress={() => navigation.navigate('SystemViolations')}
+              >
+                <View style={styles.actionIconBox}>
+                  <Ionicons name="documents-outline" size={24} color="#0080FF" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.actionCardTitle, { marginTop: 0 }]}>Danh sách vi phạm toàn hệ thống</Text>
+                  <Text style={styles.actionCardDesc}>Quản lý và theo dõi các biên bản xử lý vi phạm</Text>
+                </View>
+              </TouchableOpacity>
             </View>
 
             {/* QUY TRÌNH NGHIỆP VỤ CHO SĨ QUAN */}

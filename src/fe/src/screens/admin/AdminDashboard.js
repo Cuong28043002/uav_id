@@ -16,6 +16,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import axiosClient from '../../api/axiosClient';
 import { useAuth } from '../../navigation/AppNavigator';
 
+const formatCurrency = (amount) => {
+  if (!amount && amount !== 0) return 'Cảnh cáo';
+  const numericAmount = Math.round(parseFloat(amount));
+  if (numericAmount === 0) return 'Cảnh cáo';
+  return numericAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' VNĐ';
+};
+
 const AdminDashboard = ({ navigation }) => {
   const auth = useAuth();
   const [adminName, setAdminName] = useState('Admin');
@@ -209,7 +216,7 @@ const AdminDashboard = ({ navigation }) => {
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={[styles.menuItem, { borderBottomWidth: 0 }]}
+                    style={styles.menuItem}
                     onPress={() => navigation.navigate('SystemSettings')}
                   >
                     <View style={styles.menuIconContainer}>
@@ -218,6 +225,20 @@ const AdminDashboard = ({ navigation }) => {
                     <View style={styles.menuTextContainer}>
                       <Text style={styles.menuItemTitle}>Cấu hình hệ thống</Text>
                       <Text style={styles.menuItemSubtitle}>Thiết lập tham số phạt, danh mục hãng sản xuất UAV</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color="#64748B" />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.menuItem, { borderBottomWidth: 0 }]}
+                    onPress={() => navigation.navigate('SystemViolations')}
+                  >
+                    <View style={styles.menuIconContainer}>
+                      <Ionicons name="warning" size={20} color="#0080FF" />
+                    </View>
+                    <View style={styles.menuTextContainer}>
+                      <Text style={styles.menuItemTitle}>Hồ sơ vi phạm toàn hệ thống</Text>
+                      <Text style={styles.menuItemSubtitle}>Xem chi tiết và xác nhận thanh toán tiền phạt</Text>
                     </View>
                     <Ionicons name="chevron-forward" size={18} color="#64748B" />
                   </TouchableOpacity>
@@ -289,13 +310,25 @@ const AdminDashboard = ({ navigation }) => {
                 </View>
 
                 {/* KHỐI 7: BIÊN BẢN VI PHẠM MỚI NHẤT */}
-                <Text style={styles.sectionTitle}>Biên bản vi phạm không phận mới nhất</Text>
+                <View style={styles.sectionHeaderRow}>
+                  <Text style={[styles.sectionTitle, { marginTop: 0, marginBottom: 0 }]}>
+                    Biên bản vi phạm không phận mới nhất
+                  </Text>
+                  <TouchableOpacity onPress={() => navigation.navigate('SystemViolations')}>
+                    <Text style={styles.viewAllText}>Xem tất cả</Text>
+                  </TouchableOpacity>
+                </View>
+
                 <View style={styles.tableCard}>
                   {data?.recent?.violations?.length === 0 ? (
                     <Text style={styles.emptyTableText}>Chưa có vi phạm nào</Text>
                   ) : (
                     data?.recent?.violations?.map((item) => (
-                      <View key={item.id} style={styles.tableRow}>
+                      <TouchableOpacity
+                        key={item.id}
+                        style={styles.tableRow}
+                        onPress={() => navigation.navigate('ViolationDetail', { violationId: item.id })}
+                      >
                         <View style={{ flex: 1 }}>
                           <Text style={styles.tableRowTitle}>{item.violation_type}</Text>
                           <Text style={styles.tableRowSubtitle}>
@@ -304,7 +337,7 @@ const AdminDashboard = ({ navigation }) => {
                         </View>
                         <View style={{ alignItems: 'flex-end' }}>
                           <Text style={styles.fineText}>
-                            {item.fine_amount ? `${item.fine_amount.toLocaleString('vi-VN')}đ` : 'Cảnh cáo'}
+                            {formatCurrency(item.fine_amount)}
                           </Text>
                           <View style={[
                             styles.statusBadge,
@@ -315,7 +348,7 @@ const AdminDashboard = ({ navigation }) => {
                             </Text>
                           </View>
                         </View>
-                      </View>
+                      </TouchableOpacity>
                     ))
                   )}
                 </View>
@@ -669,6 +702,18 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: 'bold',
     color: '#475569',
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 22,
+    marginBottom: 12,
+  },
+  viewAllText: {
+    color: '#0080FF',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });
 

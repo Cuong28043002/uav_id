@@ -16,6 +16,13 @@ import axiosClient from '../../api/axiosClient';
 import { useAuth } from '../../navigation/AppNavigator';
 import Alert from '../../components/CustomAlert';
 
+const formatCurrency = (amount) => {
+  if (!amount && amount !== 0) return 'Cảnh cáo';
+  const numericAmount = Math.round(parseFloat(amount));
+  if (numericAmount === 0) return 'Cảnh cáo';
+  return numericAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' VNĐ';
+};
+
 const ViolationDetail = ({ route, navigation }) => {
   const { violationId } = route.params || {};
   const auth = useAuth();
@@ -49,7 +56,7 @@ const ViolationDetail = ({ route, navigation }) => {
   const handlePay = async () => {
     Alert.alert(
       'Thanh toán điện tử',
-      `Bạn đang thực hiện nộp phạt trực tuyến số tiền ${violation?.fine_amount?.toLocaleString('vi-VN')} VNĐ cho vi phạm này.\n\nBạn có chắc chắn muốn xác nhận thanh toán?`,
+      `Bạn đang thực hiện nộp phạt trực tuyến số tiền ${formatCurrency(violation?.fine_amount)} cho vi phạm này.\n\nBạn có chắc chắn muốn xác nhận thanh toán?`,
       [
         { text: 'Hủy', style: 'cancel' },
         {
@@ -80,7 +87,7 @@ const ViolationDetail = ({ route, navigation }) => {
   const handleAdminVerify = async () => {
     Alert.alert(
       'Xác nhận thanh toán',
-      'Đồng chí xác nhận đã thu tiền phạt trực tiếp từ chủ sở hữu và chuyển trạng thái biên lai thành ĐÃ THANH TOÁN?',
+      'Đồng chí xác nhận đã thu tiền phạt trực tiếp hoặc xác nhận người vi phạm đã đóng phạt thành công cho biên lai này?',
       [
         { text: 'Hủy', style: 'cancel' },
         {
@@ -88,7 +95,7 @@ const ViolationDetail = ({ route, navigation }) => {
           onPress: async () => {
             setPaying(true);
             try {
-              const response = await axiosClient.patch(`/violations/${violationId}/status`, { status: 'paid' });
+              const response = await axiosClient.put(`/violations/${violationId}/pay`);
               if (response.data?.success) {
                 Alert.alert(
                   'Thành công',
@@ -168,7 +175,7 @@ const ViolationDetail = ({ route, navigation }) => {
 
               <Text style={styles.violationType}>{violation.violation_type}</Text>
               <Text style={styles.fineAmount}>
-                {violation.fine_amount ? `${violation.fine_amount.toLocaleString('vi-VN')} VNĐ` : 'Cảnh cáo'}
+                {formatCurrency(violation.fine_amount)}
               </Text>
               
               <Text style={styles.dateLabel}>
@@ -237,7 +244,7 @@ const ViolationDetail = ({ route, navigation }) => {
                       </>
                     )}
                   </TouchableOpacity>
-                ) : userRole === 'admin' ? (
+                ) : (userRole === 'admin' || userRole === 'police') ? (
                   <TouchableOpacity
                     style={[styles.actionBtn, styles.payBtn]}
                     onPress={handleAdminVerify}
@@ -252,14 +259,7 @@ const ViolationDetail = ({ route, navigation }) => {
                       </>
                     )}
                   </TouchableOpacity>
-                ) : (
-                  <View style={styles.policeInfoBox}>
-                    <Ionicons name="information-circle" size={18} color="#64748B" />
-                    <Text style={styles.policeInfoText}>
-                      Biên lai chưa được thanh toán. Chỉ Admin được quyền duyệt đóng phạt tiền mặt hoặc chủ sở hữu tự đóng trực tuyến.
-                    </Text>
-                  </View>
-                )}
+                ) : null}
               </View>
             )}
           </ScrollView>
