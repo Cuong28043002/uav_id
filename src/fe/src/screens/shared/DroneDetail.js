@@ -184,6 +184,22 @@ const DroneDetail = ({ route, navigation }) => {
     </TouchableOpacity>
   );
 
+  let parsedImages = [];
+  if (drone && drone.images) {
+    if (Array.isArray(drone.images)) {
+      parsedImages = drone.images;
+    } else if (typeof drone.images === 'string') {
+      try {
+        parsedImages = JSON.parse(drone.images);
+      } catch (e) {
+        const cleaned = drone.images.replace(/[\[\]"]/g, '').trim();
+        if (cleaned) {
+          parsedImages = cleaned.split(',').map(s => s.trim()).filter(Boolean);
+        }
+      }
+    }
+  }
+
   return (
     <ImageBackground source={require('../../../assets/light_bg.png')} style={styles.backgroundImage} resizeMode="cover">
       <LinearGradient colors={['rgba(255, 255, 255, 0.7)', 'rgba(248, 250, 252, 0.85)', 'rgba(226, 232, 240, 0.95)']} style={styles.gradientOverlay}>
@@ -319,8 +335,8 @@ const DroneDetail = ({ route, navigation }) => {
                 <View style={styles.infoCard}>
                   <Text style={styles.infoCardTitle}>Thư viện hình ảnh thiết bị</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageScroll}>
-                    {drone.images && drone.images.length > 0 ? (
-                      drone.images.map((img, idx) => (
+                     {parsedImages && parsedImages.length > 0 ? (
+                      parsedImages.map((img, idx) => (
                         <View key={idx} style={styles.galleryCard}>
                           <Image source={{ uri: img }} style={styles.galleryImg} />
                         </View>

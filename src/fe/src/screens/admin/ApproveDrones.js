@@ -14,6 +14,7 @@ import {
   ScrollView,
   Dimensions,
   Image,
+  Clipboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -25,6 +26,10 @@ const { width, height } = Dimensions.get('window');
 const ApproveDrones = ({ navigation }) => {
   const [registrations, setRegistrations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
   const [rejectNote, setRejectNote] = useState('');
   const [showRejectForm, setShowRejectForm] = useState(false);
@@ -53,24 +58,58 @@ const ApproveDrones = ({ navigation }) => {
 
   const spinInterval = useRef(null);
 
-  const fetchRegistrations = async () => {
-    setLoading(true);
+  const fetchRegistrations = async (pageNum = 1, isRefresh = false) => {
+    if (pageNum === 1) {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+    } else {
+      setLoadingMore(true);
+    }
+
     try {
-      const response = await axiosClient.get(`/registrations?status=${activeTab}`);
-      setRegistrations(response.data?.data || []);
-      setExpandedId(null);
-      setShowRejectForm(false);
-      setRejectNote('');
+      const response = await axiosClient.get(`/registrations?status=${activeTab}&page=${pageNum}&limit=10`);
+      const newData = response.data?.data || [];
+      const meta = response.data?.meta;
+
+      if (pageNum === 1) {
+        setRegistrations(newData);
+        setExpandedId(null);
+        setShowRejectForm(false);
+        setRejectNote('');
+      } else {
+        setRegistrations((prev) => [...prev, ...newData]);
+      }
+
+      if (meta) {
+        setHasMore(pageNum < meta.totalPages);
+      } else {
+        setHasMore(newData.length >= 10);
+      }
+      setPage(pageNum);
     } catch (error) {
       Alert.alert('Lỗi', 'Không thể tải danh sách hồ sơ.');
     } finally {
       setLoading(false);
+      setLoadingMore(false);
+      setRefreshing(false);
     }
   };
 
   useEffect(() => {
-    fetchRegistrations();
+    fetchRegistrations(1, false);
   }, [activeTab]);
+
+  const handleRefresh = () => {
+    fetchRegistrations(1, true);
+  };
+
+  const loadMoreRegistrations = () => {
+    if (loading || loadingMore || !hasMore) return;
+    fetchRegistrations(page + 1, false);
+  };
 
   const handleOpenReview = (reg) => {
     setSelectedReg(reg);
@@ -224,13 +263,17 @@ const ApproveDrones = ({ navigation }) => {
               <Text style={styles.modelName}>{item.drone?.model_name || 'Không rõ thiết bị'}</Text>
               <View style={[styles.statusBadge, 
                 item.status === 'approved' ? styles.statusApproved : 
-                item.status === 'rejected' ? styles.statusRejected : styles.statusPending
+                item.status === 'rejected' ? styles.statusRejected : 
+                item.status === 'revoked' ? styles.statusRevoked : styles.statusPending
               ]}>
                 <Text style={[styles.statusBadgeText,
                   item.status === 'approved' ? styles.statusApprovedText : 
-                  item.status === 'rejected' ? styles.statusRejectedText : styles.statusPendingText
+                  item.status === 'rejected' ? styles.statusRejectedText : 
+                  item.status === 'revoked' ? styles.statusRevokedText : styles.statusPendingText
                 ]}>
-                  {item.status === 'approved' ? 'Đã duyệt' : item.status === 'rejected' ? 'Từ chối' : 'Chờ duyệt'}
+                  {item.status === 'approved' ? 'Đã duyệt' : 
+                   item.status === 'rejected' ? 'Từ chối' : 
+                   item.status === 'revoked' ? 'Đã thu hồi' : 'Chờ duyệt'}
                 </Text>
               </View>
             </View>
@@ -257,6 +300,14 @@ const ApproveDrones = ({ navigation }) => {
             </Text>
             <Text style={styles.detailsText}>- Phân loại: {item.drone?.category?.name || 'Quadcopter'}</Text>
 
+            <TouchableOpacity
+              style={styles.viewDroneBtn}
+              onPress={() => navigation.navigate('DroneDetail', { droneId: item.drone_id })}
+            >
+              <Ionicons name="eye-outline" size={15} color="#0080FF" style={{ marginRight: 6 }} />
+              <Text style={styles.viewDroneBtnText}>Xem chi tiết lịch sử & thông tin UAV</Text>
+            </TouchableOpacity>
+
             <Text style={[styles.detailsTitle, { marginTop: 10 }]}>Hồ sơ đăng ký:</Text>
             <Text style={styles.detailsText}>- Ngày tạo: {new Date(item.createdAt).toLocaleDateString('vi-VN')}</Text>
             {item.identification_code && (
@@ -265,10 +316,21 @@ const ApproveDrones = ({ navigation }) => {
                 <View style={styles.plateMiniBadge}>
                   <Text style={styles.plateMiniText}>{item.identification_code}</Text>
                 </View>
+                <TouchableOpacity
+                  style={styles.copyBtn}
+                  onPress={() => {
+                    Clipboard.setString(item.identification_code);
+                    Alert.alert('Đã sao chép', `Đã sao chép mã định danh "${item.identification_code}" vào khay nhớ tạm.`);
+                  }}
+                >
+                  <Ionicons name="copy-outline" size={15} color="#0080FF" style={{ marginLeft: 6 }} />
+                </TouchableOpacity>
               </View>
             )}
             {item.admin_note && (
-              <Text style={styles.detailsText}>- Phản hồi thẩm định: {item.admin_note}</Text>
+              <Text style={styles.detailsText}>
+                {item.status === 'revoked' ? `- Lý do thu hồi: ${item.admin_note}` : `- Phản hồi thẩm định: ${item.admin_note}`}
+              </Text>
             )}
 
             {activeTab === 'pending' && (
@@ -396,7 +458,7 @@ const ApproveDrones = ({ navigation }) => {
               onPress={() => setActiveTab('pending')}
             >
               <Text style={[styles.tabText, activeTab === 'pending' && styles.activeTabText]}>
-                Hồ sơ chờ duyệt
+                Chờ duyệt
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -404,7 +466,7 @@ const ApproveDrones = ({ navigation }) => {
               onPress={() => setActiveTab('approved')}
             >
               <Text style={[styles.tabText, activeTab === 'approved' && styles.activeTabText]}>
-                Đã duyệt & Cấp biển
+                Đã cấp biển
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -412,7 +474,15 @@ const ApproveDrones = ({ navigation }) => {
               onPress={() => setActiveTab('rejected')}
             >
               <Text style={[styles.tabText, activeTab === 'rejected' && styles.activeTabText]}>
-                Đã từ chối cấp
+                Từ chối
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tabItem, activeTab === 'revoked' && styles.activeTabItem]}
+              onPress={() => setActiveTab('revoked')}
+            >
+              <Text style={[styles.tabText, activeTab === 'revoked' && styles.activeTabText]}>
+                Đã thu hồi
               </Text>
             </TouchableOpacity>
           </View>
@@ -428,6 +498,17 @@ const ApproveDrones = ({ navigation }) => {
               renderItem={renderRegistrationItem}
               contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}
+              onEndReached={loadMoreRegistrations}
+              onEndReachedThreshold={0.2}
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              ListFooterComponent={
+                loadingMore ? (
+                  <View style={styles.footerLoader}>
+                    <ActivityIndicator size="small" color="#0080FF" />
+                  </View>
+                ) : null
+              }
               ListEmptyComponent={
                 <View style={styles.emptyContainer}>
                   <Ionicons name="document-text-outline" size={48} color="#94A3B8" />
@@ -924,6 +1005,40 @@ const styles = StyleSheet.create({
   },
   statusPendingText: {
     color: '#0080FF',
+  },
+  footerLoader: {
+    marginVertical: 16,
+    alignItems: 'center',
+  },
+  statusRevoked: {
+    backgroundColor: '#F3E8FF',
+  },
+  statusRevokedText: {
+    color: '#9333EA',
+  },
+  copyBtn: {
+    marginLeft: 4,
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  viewDroneBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginTop: 8,
+    marginBottom: 8,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  viewDroneBtnText: {
+    color: '#0080FF',
+    fontSize: 11,
+    fontWeight: 'bold',
   },
   statusBadgeText: {
     fontSize: 10,
