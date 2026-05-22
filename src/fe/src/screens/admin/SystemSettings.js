@@ -29,7 +29,8 @@ const settingLabels = {
 const SystemSettings = ({ navigation }) => {
   const auth = useAuth();
   const userRole = auth?.userRole;
-  const isAdmin = userRole === 'admin';
+  const roleName = typeof userRole === 'object' ? userRole?.name : userRole;
+  const isAdmin = roleName?.toLowerCase() === 'admin';
 
   const [activeTab, setActiveTab] = useState('settings');
   const [loading, setLoading] = useState(true);
@@ -183,27 +184,29 @@ const SystemSettings = ({ navigation }) => {
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
               <Ionicons name="arrow-back" size={24} color="#0F172A" />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>{isAdmin ? 'Cấu Hình Hệ Thống' : 'Thông Tin & Chính Sách Hệ Thống'}</Text>
+            <Text style={styles.headerTitle}>{isAdmin ? 'Cấu Hình Hệ Thống' : 'Hỗ Trợ & Liên Hệ'}</Text>
           </View>
 
-          <View style={styles.tabBar}>
-            <TouchableOpacity
-              style={[styles.tabItem, activeTab === 'settings' && styles.activeTabItem]}
-              onPress={() => setActiveTab('settings')}
-            >
-              <Text style={[styles.tabText, activeTab === 'settings' && styles.activeTabText]}>
-                Tham số hệ thống
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.tabItem, activeTab === 'manufacturers' && styles.activeTabItem]}
-              onPress={() => setActiveTab('manufacturers')}
-            >
-              <Text style={[styles.tabText, activeTab === 'manufacturers' && styles.activeTabText]}>
-                Nhà sản xuất
-              </Text>
-            </TouchableOpacity>
-          </View>
+          {isAdmin && (
+            <View style={styles.tabBar}>
+              <TouchableOpacity
+                style={[styles.tabItem, activeTab === 'settings' && styles.activeTabItem]}
+                onPress={() => setActiveTab('settings')}
+              >
+                <Text style={[styles.tabText, activeTab === 'settings' && styles.activeTabText]}>
+                  Tham số hệ thống
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tabItem, activeTab === 'manufacturers' && styles.activeTabItem]}
+                onPress={() => setActiveTab('manufacturers')}
+              >
+                <Text style={[styles.tabText, activeTab === 'manufacturers' && styles.activeTabText]}>
+                  Nhà sản xuất
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
             {activeTab === 'settings' && (
@@ -275,13 +278,15 @@ const SystemSettings = ({ navigation }) => {
                 {loading ? (
                   <ActivityIndicator size="large" color="#0080FF" style={{ marginTop: 40 }} />
                 ) : (
-                  settings.map((item) => {
-                    const isBool = item.key_value === 'true' || item.key_value === 'false';
-                    return (
-                      <View key={item.id} style={styles.card}>
-                        <View style={styles.cardBody}>
-                          <Text style={styles.cardTitle}>{settingLabels[item.key_name] || item.key_name}</Text>
-                          <Text style={styles.cardSystemKey}>Mã hệ thống: {item.key_name}</Text>
+                  settings
+                    .filter((item) => isAdmin || item.key_name === 'contact_email')
+                    .map((item) => {
+                      const isBool = item.key_value === 'true' || item.key_value === 'false';
+                      return (
+                        <View key={item.id} style={styles.card}>
+                          <View style={styles.cardBody}>
+                            <Text style={styles.cardTitle}>{settingLabels[item.key_name] || item.key_name}</Text>
+                            {isAdmin && <Text style={styles.cardSystemKey}>Mã hệ thống: {item.key_name}</Text>}
                           
                           <View style={styles.settingRow}>
                             {isBool ? (

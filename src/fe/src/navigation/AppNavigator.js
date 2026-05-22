@@ -52,7 +52,8 @@ const AppNavigator = () => {
       const token = await AsyncStorage.getItem('token');
       if (userStr && token) {
         const user = JSON.parse(userStr);
-        setUserRole(user.role);
+        const role = typeof user.role === 'object' ? user.role?.name : user.role;
+        setUserRole(role ? role.toLowerCase() : null);
       } else {
         setUserRole(null);
       }
