@@ -1,4 +1,4 @@
-const { LookupHistory, Registration, Drone, User, Manufacturer, DroneCategory } = require('../models');
+const { sequelize, LookupHistory, Registration, Drone, User, Manufacturer, DroneCategory } = require('../models');
 const { paginationParams, paginationMeta } = require('../utils/helpers');
 const { Op } = require('sequelize');
 
@@ -8,20 +8,26 @@ const lookup = async (req, res) => {
     const { identification_code } = req.params;
 
     const reg = await Registration.findOne({
-      where: { identification_code, status: 'approved' },
+      where: {
+        [Op.or]: [
+          { identification_code },
+          { '$drone.serial_number$': identification_code }
+        ]
+      },
       include: [
         {
           model: Drone,
           as: 'drone',
           attributes: ['id', 'model_name', 'serial_number', 'weight', 'max_flight_height', 'images'],
           include: [
-            { model: User, as: 'owner', attributes: ['id', 'full_name'] },
+            { model: User, as: 'owner', attributes: ['id', 'full_name', 'email', 'phone', 'cccd_number'] },
             { model: Manufacturer, as: 'manufacturer', attributes: ['id', 'name', 'country'] },
             { model: DroneCategory, as: 'category', attributes: ['id', 'name'] },
           ],
         },
       ],
       attributes: ['id', 'identification_code', 'issue_date', 'status'],
+      order: [['id', 'DESC']],
     });
 
     if (!reg) {
@@ -61,15 +67,27 @@ const lookup = async (req, res) => {
 };
 
 // GET /api/lookup-history (Admin/Police)
-// Query: q, ip_address, date_from, date_to, page, limit
+// Query: q, ip_address, date_from, date_to, page, limit, only_valid
 const getHistory = async (req, res) => {
   try {
     const { page, limit, offset } = paginationParams(req.query);
-    const { q, ip_address, date_from, date_to, sort_by = 'createdAt', sort_order = 'DESC' } = req.query;
+    const { q, ip_address, date_from, date_to, only_valid, sort_by = 'createdAt', sort_order = 'DESC' } = req.query;
 
     const where = {};
 
-    if (q) {
+    if (only_valid === 'true') {
+      where.identification_code = {
+        [Op.in]: sequelize.literal('(SELECT DISTINCT identification_code FROM registrations WHERE status IN ("approved", "revoked") AND identification_code IS NOT NULL)')
+      };
+      if (q) {
+        where.identification_code = {
+          [Op.and]: [
+            where.identification_code,
+            { [Op.like]: `%${q}%` }
+          ]
+        };
+      }
+    } else if (q) {
       where.identification_code = { [Op.like]: `%${q}%` };
     }
 

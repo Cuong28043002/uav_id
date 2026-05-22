@@ -88,7 +88,7 @@ const PoliceDashboard = ({ navigation }) => {
       }
 
       // 4. Get lookup history from BE
-      const response = await axiosClient.get('/lookup-history?limit=5');
+      const response = await axiosClient.get('/lookup-history?limit=5&only_valid=true');
       setHistory(response.data?.data || []);
     } catch (error) {
       console.error(error);

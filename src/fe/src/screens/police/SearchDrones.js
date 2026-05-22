@@ -10,22 +10,68 @@ import {
   StatusBar,
   ActivityIndicator,
   ImageBackground,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import axiosClient from '../../api/axiosClient';
 import Alert from '../../components/CustomAlert';
 
+const getStatusDetails = (status) => {
+  switch (status) {
+    case 'approved':
+      return {
+        label: 'HIỆU LỰC',
+        style: styles.statusApproved,
+        textStyle: styles.statusApprovedText,
+      };
+    case 'revoked':
+      return {
+        label: 'THU HỒI / HỦY',
+        style: styles.statusRevoked,
+        textStyle: styles.statusRevokedText,
+      };
+    case 'pending':
+      return {
+        label: 'CHỜ PHÊ DUYỆT',
+        style: styles.statusPending,
+        textStyle: styles.statusPendingText,
+      };
+    case 'rejected':
+      return {
+        label: 'BỊ TỪ CHỐI',
+        style: styles.statusRejected,
+        textStyle: styles.statusRejectedText,
+      };
+    default:
+      return {
+        label: 'KHÔNG XÁC ĐỊNH',
+        style: styles.statusInactive,
+        textStyle: styles.statusInactiveText,
+      };
+  }
+};
+
 const SearchDrones = ({ route, navigation }) => {
   const params = route?.params || {};
   const [code, setCode] = useState(params.identification_code || '');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [history, setHistory] = useState([]);
+
+  const fetchHistory = async () => {
+    try {
+      const response = await axiosClient.get('/lookup-history?limit=5');
+      setHistory(response.data?.data || []);
+    } catch (error) {
+      console.error('Error fetching lookup history:', error);
+    }
+  };
 
   const handleSearch = async (forcedCode) => {
     const searchCode = (forcedCode || code).trim();
     if (!searchCode) {
-      Alert.alert('Thông báo', 'Vui lòng nhập mã định danh UAV.');
+      Alert.alert('Thông báo', 'Vui lòng nhập mã định danh hoặc số S/N của UAV.');
       return;
     }
 
@@ -35,15 +81,20 @@ const SearchDrones = ({ route, navigation }) => {
       const response = await axiosClient.get(`/lookup/${searchCode}`);
       if (response.data?.success) {
         setResult(response.data.data);
+        fetchHistory().catch(() => {});
       } else {
-        Alert.alert('Không tìm thấy', 'Không tìm thấy thiết bị UAV có mã định danh này.');
+        Alert.alert('Không tìm thấy', 'Không tìm thấy thiết bị UAV khớp với mã định danh hoặc số S/N này.');
       }
     } catch (error) {
-      Alert.alert('Không tìm thấy', 'Mã định danh không tồn tại hoặc hệ thống gặp lỗi.');
+      Alert.alert('Không tìm thấy', 'Mã định danh hoặc số S/N không tồn tại hoặc hệ thống gặp lỗi.');
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchHistory();
+  }, []);
 
   useEffect(() => {
     if (params.identification_code) {
@@ -73,16 +124,27 @@ const SearchDrones = ({ route, navigation }) => {
 
           <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
             <View style={styles.searchSection}>
-              <Text style={styles.inputLabel}>Nhập mã số định danh của UAV</Text>
+              <Text style={styles.inputLabel}>Nhập mã định danh hoặc số S/N của UAV</Text>
               <View style={styles.searchBar}>
                 <TextInput
                   style={styles.searchInput}
-                  placeholder="Ví dụ: UAV-ABC123-XY9Z"
+                  placeholder="Ví dụ: UAV-ABC123-XY9Z hoặc S/N..."
                   placeholderTextColor="#94A3B8"
                   autoCapitalize="characters"
                   value={code}
                   onChangeText={setCode}
                 />
+                {!!code && (
+                  <TouchableOpacity 
+                    style={[styles.searchBtn, { backgroundColor: '#F1F5F9', marginRight: 4 }]} 
+                    onPress={() => {
+                      setCode('');
+                      setResult(null);
+                    }}
+                  >
+                    <Ionicons name="close" size={20} color="#64748B" />
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity 
                   style={[styles.searchBtn, { backgroundColor: '#F1F5F9' }]} 
                   onPress={() => navigation.navigate('QRScanner')}
@@ -95,23 +157,128 @@ const SearchDrones = ({ route, navigation }) => {
               </View>
             </View>
 
+            {!result && !loading && (
+              <View style={styles.historySection}>
+                <Text style={styles.historySectionTitle}>Lịch sử tra cứu gần đây</Text>
+                {history.length > 0 ? (
+                  history.map((item) => (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={styles.historyCard}
+                      activeOpacity={0.7}
+                      onPress={() => {
+                        setCode(item.identification_code);
+                        handleSearch(item.identification_code);
+                      }}
+                    >
+                      <View style={styles.historyInfo}>
+                        <Text style={styles.historyCode}>{item.identification_code}</Text>
+                        <Text style={styles.historyTime}>
+                          {new Date(item.createdAt).toLocaleString('vi-VN')}
+                        </Text>
+                      </View>
+                      <View style={styles.ipBadge}>
+                        <Text style={styles.ipText}>{item.ip_address || 'Đặc vụ'}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))
+                ) : (
+                  <Text style={styles.noHistoryText}>Chưa có lịch sử tra cứu nào</Text>
+                )}
+              </View>
+            )}
+
             {loading && (
               <ActivityIndicator size="large" color="#0080FF" style={{ marginTop: 40 }} />
             )}
 
             {result && (
               <View style={styles.resultContainer}>
-                <View style={styles.resultHeader}>
-                  <Ionicons name="checkmark-circle" size={26} color="#10B981" />
-                  <Text style={styles.resultHeaderTitle}>KẾT QUẢ ĐỊNH DANH HỢP LỆ</Text>
-                </View>
+                {(() => {
+                  let headerTitle = 'KẾT QUẢ ĐỊNH DANH';
+                  let headerColor = '#64748B';
+                  let iconName = 'help-circle';
+
+                  if (result.status === 'approved') {
+                    headerTitle = 'KẾT QUẢ ĐỊNH DANH HỢP LỆ';
+                    headerColor = '#10B981';
+                    iconName = 'checkmark-circle';
+                  } else if (result.status === 'revoked') {
+                    headerTitle = 'KẾT QUẢ ĐỊNH DANH ĐÃ BỊ THU HỒI';
+                    headerColor = '#EF4444';
+                    iconName = 'alert-circle';
+                  } else if (result.status === 'pending') {
+                    headerTitle = 'KẾT QUẢ ĐỊNH DANH CHỜ DUYỆT';
+                    headerColor = '#3B82F6';
+                    iconName = 'time';
+                  } else if (result.status === 'rejected') {
+                    headerTitle = 'KẾT QUẢ ĐỊNH DANH BỊ TỪ CHỐI';
+                    headerColor = '#F97316';
+                    iconName = 'close-circle';
+                  }
+
+                  return (
+                    <View style={styles.resultHeader}>
+                      <Ionicons name={iconName} size={26} color={headerColor} />
+                      <Text style={[styles.resultHeaderTitle, { color: headerColor }]}>
+                        {headerTitle}
+                      </Text>
+                    </View>
+                  );
+                })()}
 
                 <View style={styles.sectionCard}>
                   <Text style={styles.sectionCardTitle}>Thông tin thiết bị</Text>
+                  
+                  {/* Drone Image List */}
+                  {(() => {
+                    let droneImages = [];
+                    if (result.drone?.images) {
+                      if (Array.isArray(result.drone.images)) {
+                        droneImages = result.drone.images;
+                      } else if (typeof result.drone.images === 'string') {
+                        try {
+                          droneImages = JSON.parse(result.drone.images);
+                        } catch (e) {
+                          droneImages = [];
+                        }
+                      }
+                    }
+
+                    if (droneImages && droneImages.length > 0) {
+                      return (
+                        <ScrollView
+                          horizontal
+                          showsHorizontalScrollIndicator={false}
+                          contentContainerStyle={styles.imageScrollContainer}
+                        >
+                          {droneImages.map((imgUrl, index) => (
+                            <Image
+                              key={index}
+                              source={{ uri: imgUrl }}
+                              style={[
+                                styles.droneImage,
+                                index < droneImages.length - 1 && { marginRight: 12 }
+                              ]}
+                              resizeMode="cover"
+                            />
+                          ))}
+                        </ScrollView>
+                      );
+                    } else {
+                      return (
+                        <View style={styles.placeholderImageContainer}>
+                          <Ionicons name="airplane-outline" size={40} color="#94A3B8" />
+                          <Text style={styles.placeholderImageText}>Không có hình ảnh thiết bị</Text>
+                        </View>
+                      );
+                    }
+                  })()}
+
                   <View style={styles.infoRow}>
                     <Text style={styles.infoLabel}>Mã định danh:</Text>
                     <Text style={[styles.infoValue, { color: '#0080FF', fontWeight: 'bold' }]}>
-                      {result.identification_code}
+                      {result.identification_code || 'Chưa cấp phát'}
                     </Text>
                   </View>
                   <View style={styles.infoRow}>
@@ -128,18 +295,16 @@ const SearchDrones = ({ route, navigation }) => {
                   </View>
                   <View style={styles.infoRow}>
                     <Text style={styles.infoLabel}>Trạng thái định danh:</Text>
-                    <View
-                      style={[
-                        styles.statusBadge,
-                        result.status === 'approved'
-                          ? styles.statusApproved
-                          : styles.statusRevoked,
-                      ]}
-                    >
-                      <Text style={styles.statusBadgeText}>
-                        {result.status === 'approved' ? 'HIỆU LỰC' : 'THU HỒI / HỦY'}
-                      </Text>
-                    </View>
+                    {(() => {
+                      const statusDetails = getStatusDetails(result.status);
+                      return (
+                        <View style={[styles.statusBadge, statusDetails.style]}>
+                          <Text style={[styles.statusBadgeText, statusDetails.textStyle]}>
+                            {statusDetails.label}
+                          </Text>
+                        </View>
+                      );
+                    })()}
                   </View>
                 </View>
 
@@ -325,13 +490,65 @@ const styles = StyleSheet.create({
   statusApproved: {
     backgroundColor: '#D1FAE5',
   },
+  statusApprovedText: {
+    color: '#065F46',
+  },
   statusRevoked: {
     backgroundColor: '#FEE2E2',
   },
+  statusRevokedText: {
+    color: '#991B1B',
+  },
+  statusPending: {
+    backgroundColor: '#DBEAFE',
+  },
+  statusPendingText: {
+    color: '#1E40AF',
+  },
+  statusRejected: {
+    backgroundColor: '#FFEDD5',
+  },
+  statusRejectedText: {
+    color: '#9A3412',
+  },
+  statusInactive: {
+    backgroundColor: '#F1F5F9',
+  },
+  statusInactiveText: {
+    color: '#475569',
+  },
   statusBadgeText: {
-    color: '#065F46',
     fontSize: 11,
     fontWeight: 'bold',
+  },
+  imageScrollContainer: {
+    paddingVertical: 10,
+    marginBottom: 12,
+  },
+  droneImage: {
+    width: 280,
+    height: 160,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+  },
+  placeholderImageContainer: {
+    width: '100%',
+    height: 160,
+    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    marginTop: 8,
+  },
+  placeholderImageText: {
+    color: '#94A3B8',
+    fontSize: 13,
+    marginTop: 8,
+    fontWeight: '500',
   },
   actionsContainer: {
     marginTop: 10,
@@ -362,6 +579,58 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: 'bold',
     marginLeft: 8,
+  },
+  historySection: {
+    marginTop: 20,
+    marginBottom: 30,
+  },
+  historySectionTitle: {
+    color: '#1E293B',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 12,
+  },
+  historyCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  historyInfo: {
+    flex: 1,
+  },
+  historyCode: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#1E293B',
+  },
+  historyTime: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 4,
+  },
+  ipBadge: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  ipText: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  noHistoryText: {
+    color: '#94A3B8',
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: 10,
+    fontStyle: 'italic',
   },
 });
 

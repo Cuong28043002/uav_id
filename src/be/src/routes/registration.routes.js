@@ -81,6 +81,9 @@ router.get('/', authenticate, ctrl.getAll);
  */
 router.get('/:id/qr', authenticate, ctrl.getQr);
 
+// GET /api/registrations/:id/qr-image - Trả về ảnh nhị phân QR trực tiếp (công khai không cần token)
+router.get('/:id/qr-image', ctrl.getQrImage);
+
 /**
  * @swagger
  * /api/registrations/{id}:

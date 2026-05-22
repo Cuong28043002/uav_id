@@ -147,6 +147,37 @@ const getQr = async (req, res) => {
   }
 };
 
+// GET /api/registrations/:id/qr-image - Trả về ảnh nhị phân QR code trực tiếp (phục vụ hiển thị qua thẻ link ảnh)
+const getQrImage = async (req, res) => {
+  try {
+    const reg = await Registration.findByPk(req.params.id, {
+      attributes: ['id', 'qr_code_url'],
+    });
+
+    if (!reg || !reg.qr_code_url) {
+      return res.status(404).send('Không tìm thấy ảnh QR code');
+    }
+
+    const matches = reg.qr_code_url.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+    if (!matches || matches.length !== 3) {
+      return res.status(400).send('Định dạng ảnh không hợp lệ');
+    }
+
+    const imageType = matches[1];
+    const base64Data = matches[2];
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    res.writeHead(200, {
+      'Content-Type': imageType,
+      'Content-Length': buffer.length,
+      'Cache-Control': 'public, max-age=86400',
+    });
+    return res.end(buffer);
+  } catch (error) {
+    return res.status(500).send(error.message);
+  }
+};
+
 // POST /api/registrations
 const create = async (req, res) => {
   try {
@@ -278,4 +309,4 @@ const revoke = async (req, res) => {
   }
 };
 
-module.exports = { getAll, getById, getQr, create, review, revoke };
+module.exports = { getAll, getById, getQr, getQrImage, create, review, revoke };
