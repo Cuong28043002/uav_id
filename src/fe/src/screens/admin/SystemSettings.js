@@ -11,12 +11,26 @@ import {
   Alert,
   ScrollView,
   ImageBackground,
+  Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import axiosClient from '../../api/axiosClient';
+import { useAuth } from '../../navigation/AppNavigator';
+
+const settingLabels = {
+  max_drone_per_user: 'Số drone tối đa/Người dùng',
+  otp_expires_minutes: 'Thời gian hiệu lực OTP (phút)',
+  registration_auto_approve: 'Tự động phê duyệt hồ sơ',
+  max_altitude_default: 'Độ cao bay tối đa mặc định (m)',
+  contact_email: 'Email hỗ trợ kỹ thuật',
+};
 
 const SystemSettings = ({ navigation }) => {
+  const auth = useAuth();
+  const userRole = auth?.userRole;
+  const isAdmin = userRole === 'admin';
+
   const [activeTab, setActiveTab] = useState('settings');
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState([]);
@@ -169,7 +183,7 @@ const SystemSettings = ({ navigation }) => {
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
               <Ionicons name="arrow-back" size={24} color="#0F172A" />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Cấu Hình Hệ Thống</Text>
+            <Text style={styles.headerTitle}>{isAdmin ? 'Cấu Hình Hệ Thống' : 'Thông Tin & Chính Sách Hệ Thống'}</Text>
           </View>
 
           <View style={styles.tabBar}>
@@ -194,42 +208,56 @@ const SystemSettings = ({ navigation }) => {
           <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
             {activeTab === 'settings' && (
               <View>
-                <TouchableOpacity
-                  style={styles.addButton}
-                  onPress={() => {
-                    setShowSettingForm(!showSettingForm);
-                    setEditingSettingId(null);
-                    setSettingKey('');
-                    setSettingVal('');
-                    setSettingDesc('');
-                  }}
-                >
-                  <Ionicons name={showSettingForm ? 'close' : 'add'} size={20} color="#FFFFFF" />
-                  <Text style={styles.addButtonText}>
-                    {showSettingForm ? 'Đóng form nhập' : 'Thêm tham số hệ thống'}
-                  </Text>
-                </TouchableOpacity>
+                {isAdmin && (
+                  <TouchableOpacity
+                    style={styles.addButton}
+                    onPress={() => {
+                      setShowSettingForm(!showSettingForm);
+                      setEditingSettingId(null);
+                      setSettingKey('');
+                      setSettingVal('');
+                      setSettingDesc('');
+                    }}
+                  >
+                    <Ionicons name={showSettingForm ? 'close' : 'add'} size={20} color="#FFFFFF" />
+                    <Text style={styles.addButtonText}>
+                      {showSettingForm ? 'Đóng form nhập' : 'Thêm tham số hệ thống'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
 
-                {showSettingForm && (
+                {isAdmin && showSettingForm && (
                   <View style={styles.formContainer}>
                     <Text style={styles.formTitle}>
                       {editingSettingId ? 'Cập nhật tham số' : 'Tạo tham số mới'}
                     </Text>
                     <TextInput
                       style={styles.input}
-                      placeholder="Setting Key (vd: max_weight_limit)"
+                      placeholder="Mã tham số (vd: max_weight_limit)"
                       placeholderTextColor="#94A3B8"
                       value={settingKey}
                       onChangeText={setSettingKey}
                       editable={!editingSettingId}
                     />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Setting Value (vd: 25)"
-                      placeholderTextColor="#94A3B8"
-                      value={settingVal}
-                      onChangeText={setSettingVal}
-                    />
+                    {settingKey === 'registration_auto_approve' || settingVal === 'true' || settingVal === 'false' ? (
+                      <View style={styles.switchRow}>
+                        <Text style={styles.switchLabel}>Trạng thái kích hoạt:</Text>
+                        <Switch
+                          value={settingVal === 'true'}
+                          onValueChange={(val) => setSettingVal(val ? 'true' : 'false')}
+                          trackColor={{ false: '#CBD5E1', true: '#93C5FD' }}
+                          thumbColor={settingVal === 'true' ? '#0080FF' : '#F1F5F9'}
+                        />
+                      </View>
+                    ) : (
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Giá trị thiết lập"
+                        placeholderTextColor="#94A3B8"
+                        value={settingVal}
+                        onChangeText={setSettingVal}
+                      />
+                    )}
                     <TextInput
                       style={[styles.input, { height: 70, textAlignVertical: 'top' }]}
                       placeholder="Mô tả tham số..."
@@ -247,60 +275,104 @@ const SystemSettings = ({ navigation }) => {
                 {loading ? (
                   <ActivityIndicator size="large" color="#0080FF" style={{ marginTop: 40 }} />
                 ) : (
-                  settings.map((item) => (
-                    <View key={item.id} style={styles.card}>
-                      <View style={styles.cardBody}>
-                        <Text style={styles.cardTitle}>{item.setting_key}</Text>
-                        <Text style={styles.cardValue}>{item.setting_value}</Text>
-                        {item.description && (
-                          <Text style={styles.cardDesc}>{item.description}</Text>
+                  settings.map((item) => {
+                    const isBool = item.key_value === 'true' || item.key_value === 'false';
+                    return (
+                      <View key={item.id} style={styles.card}>
+                        <View style={styles.cardBody}>
+                          <Text style={styles.cardTitle}>{settingLabels[item.key_name] || item.key_name}</Text>
+                          <Text style={styles.cardSystemKey}>Mã hệ thống: {item.key_name}</Text>
+                          
+                          <View style={styles.settingRow}>
+                            {isBool ? (
+                              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                <Switch
+                                  value={item.key_value === 'true'}
+                                  onValueChange={async (newValue) => {
+                                    if (!isAdmin) return;
+                                    try {
+                                      const updatedVal = newValue ? 'true' : 'false';
+                                      await axiosClient.post('/settings', {
+                                        key_name: item.key_name,
+                                        key_value: updatedVal,
+                                        description: item.description || ''
+                                      });
+                                      fetchData();
+                                    } catch (err) {
+                                      Alert.alert('Lỗi', 'Không thể cập nhật cấu hình');
+                                    }
+                                  }}
+                                  disabled={!isAdmin}
+                                  trackColor={{ false: '#CBD5E1', true: '#93C5FD' }}
+                                  thumbColor={item.key_value === 'true' ? '#0080FF' : '#F1F5F9'}
+                                />
+                                <Text style={[styles.switchStatusText, { color: item.key_value === 'true' ? '#10B981' : '#64748B' }]}>
+                                  {item.key_value === 'true' ? ' Đang bật' : ' Đang tắt'}
+                                </Text>
+                              </View>
+                            ) : (
+                              <Text style={styles.cardValue}>
+                                {item.key_name === 'max_drone_per_user' ? `${item.key_value} thiết bị` : 
+                                 item.key_name === 'otp_expires_minutes' ? `${item.key_value} phút` : 
+                                 item.key_name === 'max_altitude_default' ? `${item.key_value} mét` : 
+                                 item.key_value}
+                              </Text>
+                            )}
+                          </View>
+                          {item.description && (
+                            <Text style={styles.cardDesc}>{item.description}</Text>
+                          )}
+                        </View>
+                        {isAdmin && (
+                          <View style={styles.cardActions}>
+                            <TouchableOpacity
+                              style={styles.actionBtn}
+                              onPress={() => {
+                                setEditingSettingId(item.id);
+                                setSettingKey(item.key_name);
+                                setSettingVal(item.key_value);
+                                setSettingDesc(item.description || '');
+                                setShowSettingForm(true);
+                              }}
+                            >
+                              <Ionicons name="create-outline" size={18} color="#0080FF" />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={styles.actionBtn}
+                              onPress={() => handleDeleteSetting(item.id)}
+                            >
+                              <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                            </TouchableOpacity>
+                          </View>
                         )}
                       </View>
-                      <View style={styles.cardActions}>
-                        <TouchableOpacity
-                          style={styles.actionBtn}
-                          onPress={() => {
-                            setEditingSettingId(item.id);
-                            setSettingKey(item.setting_key);
-                            setSettingVal(item.setting_value);
-                            setSettingDesc(item.description || '');
-                            setShowSettingForm(true);
-                          }}
-                        >
-                          <Ionicons name="create-outline" size={18} color="#0080FF" />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.actionBtn}
-                          onPress={() => handleDeleteSetting(item.id)}
-                        >
-                          <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  ))
+                    );
+                  })
                 )}
               </View>
             )}
 
             {activeTab === 'manufacturers' && (
               <View>
-                <TouchableOpacity
-                  style={styles.addButton}
-                  onPress={() => {
-                    setShowMForm(!showMForm);
-                    setEditingMId(null);
-                    setMName('');
-                    setMCountry('');
-                    setMEmail('');
-                  }}
-                >
-                  <Ionicons name={showMForm ? 'close' : 'add'} size={20} color="#FFFFFF" />
-                  <Text style={styles.addButtonText}>
-                    {showMForm ? 'Đóng form nhập' : 'Thêm nhà sản xuất'}
-                  </Text>
-                </TouchableOpacity>
+                {isAdmin && (
+                  <TouchableOpacity
+                    style={styles.addButton}
+                    onPress={() => {
+                      setShowMForm(!showMForm);
+                      setEditingMId(null);
+                      setMName('');
+                      setMCountry('');
+                      setMEmail('');
+                    }}
+                  >
+                    <Ionicons name={showMForm ? 'close' : 'add'} size={20} color="#FFFFFF" />
+                    <Text style={styles.addButtonText}>
+                      {showMForm ? 'Đóng form nhập' : 'Thêm nhà sản xuất'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
 
-                {showMForm && (
+                {isAdmin && showMForm && (
                   <View style={styles.formContainer}>
                     <Text style={styles.formTitle}>
                       {editingMId ? 'Cập nhật nhà sản xuất' : 'Thêm nhà sản xuất mới'}
@@ -347,26 +419,28 @@ const SystemSettings = ({ navigation }) => {
                           <Text style={styles.cardDesc}>Email: {item.support_email}</Text>
                         )}
                       </View>
-                      <View style={styles.cardActions}>
-                        <TouchableOpacity
-                          style={styles.actionBtn}
-                          onPress={() => {
-                            setEditingMId(item.id);
-                            setMName(item.name);
-                            setMCountry(item.country || '');
-                            setMEmail(item.support_email || '');
-                            setShowMForm(true);
-                          }}
-                        >
-                          <Ionicons name="create-outline" size={18} color="#0080FF" />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.actionBtn}
-                          onPress={() => handleDeleteManufacturer(item.id)}
-                        >
-                          <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                        </TouchableOpacity>
-                      </View>
+                      {isAdmin && (
+                        <View style={styles.cardActions}>
+                          <TouchableOpacity
+                            style={styles.actionBtn}
+                            onPress={() => {
+                              setEditingMId(item.id);
+                              setMName(item.name);
+                              setMCountry(item.country || '');
+                              setMEmail(item.support_email || '');
+                              setShowMForm(true);
+                            }}
+                          >
+                            <Ionicons name="create-outline" size={18} color="#0080FF" />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.actionBtn}
+                            onPress={() => handleDeleteManufacturer(item.id)}
+                          >
+                            <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                          </TouchableOpacity>
+                        </View>
+                      )}
                     </View>
                   ))
                 )}
@@ -531,6 +605,38 @@ const styles = StyleSheet.create({
     color: '#64748B',
     fontSize: 12,
     marginTop: 4,
+  },
+  cardSystemKey: {
+    color: '#94A3B8',
+    fontSize: 11,
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  settingRow: {
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  switchStatusText: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    height: 48,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 12,
+  },
+  switchLabel: {
+    fontSize: 14,
+    color: '#0F172A',
+    fontWeight: '500',
   },
   cardActions: {
     flexDirection: 'row',

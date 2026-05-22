@@ -207,7 +207,7 @@ router.post(
  *       200:
  *         $ref: '#/components/schemas/ApiResponse'
  */
-router.get('/settings', authenticate, authorize('admin'), sCtrl.getAll);
+router.get('/settings', authenticate, authorize('admin', 'police', 'user'), sCtrl.getAll);
 
 /**
  * @swagger
@@ -226,7 +226,7 @@ router.get('/settings', authenticate, authorize('admin'), sCtrl.getAll);
  *       200:
  *         $ref: '#/components/schemas/ApiResponse'
  */
-router.get('/settings/:key', authenticate, authorize('admin'), sCtrl.getByKey);
+router.get('/settings/:key', authenticate, authorize('admin', 'police', 'user'), sCtrl.getByKey);
 
 /**
  * @swagger

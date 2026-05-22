@@ -487,6 +487,22 @@ const Profile = ({ navigation }) => {
               )}
             </View>
 
+            {/* THÔNG TIN & CẤU HÌNH HỆ THỐNG */}
+            <View style={styles.menuCard}>
+              <TouchableOpacity
+                style={styles.menuHeader}
+                onPress={() => {
+                  navigation.navigate('SystemSettings');
+                }}
+              >
+                <View style={styles.menuTitleRow}>
+                  <Ionicons name="settings-sharp" size={20} color="#0080FF" />
+                  <Text style={styles.menuTitle}>Thông tin & Cấu hình hệ thống</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+              </TouchableOpacity>
+            </View>
+
             {/* LOGOUT BUTTON */}
             <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
               <Ionicons name="log-out-outline" size={20} color="#EF4444" style={{ marginRight: 8 }} />
