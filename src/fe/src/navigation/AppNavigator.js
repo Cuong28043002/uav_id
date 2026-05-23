@@ -30,6 +30,7 @@ import FlightPermitDetail from '../screens/shared/FlightPermitDetail';
 import SystemViolations from '../screens/shared/SystemViolations';
 import ApproveDrones from '../screens/admin/ApproveDrones';
 import SystemSettings from '../screens/admin/SystemSettings';
+import ManageUsers from '../screens/admin/ManageUsers';
 
 // Custom Alert
 import CustomAlertHelper, { CustomAlert } from '../components/CustomAlert';
@@ -118,6 +119,7 @@ const AppNavigator = () => {
             <Stack.Screen name="SystemViolations" component={SystemViolations} />
             <Stack.Screen name="ApproveDrones" component={ApproveDrones} />
             <Stack.Screen name="SystemSettings" component={SystemSettings} />
+            <Stack.Screen name="ManageUsers" component={ManageUsers} />
           </>
         )}
       </Stack.Navigator>
