@@ -74,6 +74,11 @@ const getAll = async (req, res) => {
         { model: User, as: 'owner', attributes: ['id', 'full_name', 'email', 'phone'] },
         { model: Manufacturer, as: 'manufacturer', attributes: ['id', 'name', 'country'] },
         { model: DroneCategory, as: 'category', attributes: ['id', 'name'] },
+        {
+          model: Registration,
+          as: 'registrations',
+          attributes: ['id', 'identification_code', 'status', 'issue_date', 'qr_code_url'],
+        },
       ],
       limit,
       offset,

@@ -9,12 +9,12 @@ import {
   SafeAreaView,
   StatusBar,
   ActivityIndicator,
-  Alert,
   ImageBackground,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import axiosClient from '../../api/axiosClient';
+import Alert from '../../components/CustomAlert';
 
 const RegisterDrone = ({ navigation }) => {
   const [modelName, setModelName] = useState('');
@@ -114,109 +114,177 @@ const RegisterDrone = ({ navigation }) => {
           </View>
 
           <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            {/* Intro banner */}
+            <View style={styles.introCard}>
+              <View style={styles.introIconBg}>
+                <Ionicons name="shield-checkmark" size={24} color="#0080FF" />
+              </View>
+              <View style={styles.introTextCol}>
+                <Text style={styles.introTitle}>Định Danh UAV Quốc Gia</Text>
+                <Text style={styles.introDesc}>
+                  Điền chính xác thông tin để hệ thống khởi tạo hồ sơ định danh tự động và gửi phê duyệt.
+                </Text>
+              </View>
+            </View>
+
             <View style={styles.formCard}>
+              {/* Section 1: Thống tin thiết bị */}
+              <View style={styles.sectionHeaderRow}>
+                <Ionicons name="airplane-outline" size={16} color="#0080FF" />
+                <Text style={styles.sectionTitle}>Thông tin thiết bị</Text>
+              </View>
+
               <View style={styles.inputWrapper}>
                 <Text style={styles.inputLabel}>Tên dòng máy bay (Model) *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Ví dụ: DJI Mavic 3 Pro"
-                  placeholderTextColor="#94A3B8"
-                  value={modelName}
-                  onChangeText={setModelName}
-                />
+                <View style={styles.inputFieldContainer}>
+                  <Ionicons name="airplane" size={18} color="#94A3B8" style={styles.inputFieldIcon} />
+                  <TextInput
+                    style={styles.inputField}
+                    placeholder="Ví dụ: DJI Mavic 3 Pro"
+                    placeholderTextColor="#94A3B8"
+                    value={modelName}
+                    onChangeText={setModelName}
+                  />
+                </View>
               </View>
 
               <View style={styles.inputWrapper}>
                 <Text style={styles.inputLabel}>Số Serial Number (S/N) *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Nhập mã số S/N sản phẩm"
-                  placeholderTextColor="#94A3B8"
-                  value={serialNumber}
-                  onChangeText={setSerialNumber}
-                />
+                <View style={styles.inputFieldContainer}>
+                  <Ionicons name="barcode-outline" size={18} color="#94A3B8" style={styles.inputFieldIcon} />
+                  <TextInput
+                    style={styles.inputField}
+                    placeholder="Nhập mã số S/N của thiết bị"
+                    placeholderTextColor="#94A3B8"
+                    value={serialNumber}
+                    onChangeText={setSerialNumber}
+                  />
+                </View>
               </View>
 
               <View style={styles.row}>
                 <View style={[styles.inputWrapper, { flex: 1, marginRight: 10 }]}>
                   <Text style={styles.inputLabel}>Trọng lượng (kg) *</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Ví dụ: 0.95"
-                    placeholderTextColor="#94A3B8"
-                    keyboardType="numeric"
-                    value={weight}
-                    onChangeText={setWeight}
-                  />
+                  <View style={styles.inputFieldContainer}>
+                    <Ionicons name="barbell-outline" size={18} color="#94A3B8" style={styles.inputFieldIcon} />
+                    <TextInput
+                      style={styles.inputField}
+                      placeholder="Ví dụ: 0.95"
+                      placeholderTextColor="#94A3B8"
+                      keyboardType="numeric"
+                      value={weight}
+                      onChangeText={setWeight}
+                    />
+                  </View>
                 </View>
                 <View style={[styles.inputWrapper, { flex: 1 }]}>
-                  <Text style={styles.inputLabel}>Độ cao bay tối đa (m) *</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Ví dụ: 120"
-                    placeholderTextColor="#94A3B8"
-                    keyboardType="numeric"
-                    value={maxHeight}
-                    onChangeText={setMaxHeight}
-                  />
+                  <Text style={styles.inputLabel}>Độ cao tối đa (m) *</Text>
+                  <View style={styles.inputFieldContainer}>
+                    <Ionicons name="trending-up-outline" size={18} color="#94A3B8" style={styles.inputFieldIcon} />
+                    <TextInput
+                      style={styles.inputField}
+                      placeholder="Ví dụ: 120"
+                      placeholderTextColor="#94A3B8"
+                      keyboardType="numeric"
+                      value={maxHeight}
+                      onChangeText={setMaxHeight}
+                    />
+                  </View>
                 </View>
               </View>
 
+              {/* Section 2: Hãng sản xuất & Phân loại */}
+              <View style={[styles.sectionHeaderRow, { marginTop: 12 }]}>
+                <Ionicons name="settings-outline" size={16} color="#0080FF" />
+                <Text style={styles.sectionTitle}>Hãng & Phân loại</Text>
+              </View>
+
               <Text style={styles.inputLabel}>Chọn Nhà sản xuất *</Text>
-              <View style={styles.pickerContainer}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.horizontalScroll}
+                contentContainerStyle={{ paddingVertical: 4 }}
+              >
                 {manufacturers.map((item) => (
                   <TouchableOpacity
                     key={item.id}
                     style={[
-                      styles.pickerItem,
-                      selectedMId === item.id && styles.pickerItemActive,
+                      styles.chipItem,
+                      selectedMId === item.id && styles.chipItemActive,
                     ]}
                     onPress={() => setSelectedMId(item.id)}
+                    activeOpacity={0.7}
                   >
+                    <Ionicons
+                      name="business-outline"
+                      size={14}
+                      color={selectedMId === item.id ? '#0080FF' : '#64748B'}
+                      style={{ marginRight: 4 }}
+                    />
                     <Text
                       style={[
-                        styles.pickerItemText,
-                        selectedMId === item.id && styles.pickerItemTextActive,
+                        styles.chipItemText,
+                        selectedMId === item.id && styles.chipItemTextActive,
                       ]}
                     >
                       {item.name} ({item.country})
                     </Text>
                   </TouchableOpacity>
                 ))}
-              </View>
+              </ScrollView>
 
               <Text style={styles.inputLabel}>Chọn Phân loại UAV *</Text>
-              <View style={styles.pickerContainer}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.horizontalScroll}
+                contentContainerStyle={{ paddingVertical: 4 }}
+              >
                 {categories.map((item) => (
                   <TouchableOpacity
                     key={item.id}
                     style={[
-                      styles.pickerItem,
-                      selectedCId === item.id && styles.pickerItemActive,
+                      styles.chipItem,
+                      selectedCId === item.id && styles.chipItemActive,
                     ]}
                     onPress={() => setSelectedCId(item.id)}
+                    activeOpacity={0.7}
                   >
+                    <Ionicons
+                      name="options-outline"
+                      size={14}
+                      color={selectedCId === item.id ? '#0080FF' : '#64748B'}
+                      style={{ marginRight: 4 }}
+                    />
                     <Text
                       style={[
-                        styles.pickerItemText,
-                        selectedCId === item.id && styles.pickerItemTextActive,
+                        styles.chipItemText,
+                        selectedCId === item.id && styles.chipItemTextActive,
                       ]}
                     >
                       {item.name}
                     </Text>
                   </TouchableOpacity>
                 ))}
-              </View>
+              </ScrollView>
 
               <TouchableOpacity
-                style={[styles.submitBtn, loading && styles.submitBtnDisabled]}
+                style={styles.submitBtn}
                 onPress={handleSubmit}
                 disabled={loading}
+                activeOpacity={0.8}
               >
                 {loading ? (
                   <ActivityIndicator color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.submitBtnText}>ĐĂNG KÝ UAV</Text>
+                  <LinearGradient
+                    colors={['#0080FF', '#0059B2']}
+                    style={styles.submitBtnGradient}
+                  >
+                    <Ionicons name="checkmark-circle-outline" size={20} color="#FFFFFF" />
+                    <Text style={styles.submitBtnText}>ĐĂNG KÝ ĐỊNH DANH UAV</Text>
+                  </LinearGradient>
                 )}
               </TouchableOpacity>
             </View>
@@ -262,13 +330,41 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
-  loaderContainer: {
-    flex: 1,
+  scrollContent: {
+    padding: 16,
+  },
+  introCard: {
+    flexDirection: 'row',
+    backgroundColor: '#EFF6FF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
+  },
+  introIconBg: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#DBEAFE',
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 12,
   },
-  scrollContent: {
-    padding: 20,
+  introTextCol: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  introTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#1E40AF',
+  },
+  introDesc: {
+    fontSize: 12,
+    color: '#3B82F6',
+    marginTop: 2,
+    lineHeight: 16,
   },
   formCard: {
     backgroundColor: '#FFFFFF',
@@ -281,7 +377,20 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.02,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 2,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 14,
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1E293B',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   inputWrapper: {
     marginBottom: 16,
@@ -292,60 +401,69 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     fontWeight: '600',
   },
-  input: {
+  inputFieldContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    color: '#0F172A',
     borderWidth: 1,
     borderColor: '#E2E8F0',
     borderRadius: 10,
     height: 48,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
+  },
+  inputFieldIcon: {
+    marginRight: 8,
+  },
+  inputField: {
+    flex: 1,
+    color: '#0F172A',
     fontSize: 14,
+    height: '100%',
+    padding: 0,
   },
   row: {
     flexDirection: 'row',
   },
-  pickerContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  horizontalScroll: {
     marginBottom: 16,
-    gap: 8,
+    paddingBottom: 4,
   },
-  pickerItem: {
+  chipItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#F1F5F9',
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    borderRadius: 8,
-    paddingHorizontal: 12,
+    borderRadius: 20,
+    paddingHorizontal: 14,
     paddingVertical: 8,
+    marginRight: 8,
   },
-  pickerItemActive: {
-    backgroundColor: '#0080FF',
+  chipItemActive: {
+    backgroundColor: '#E0F2FE',
     borderColor: '#0080FF',
   },
-  pickerItemText: {
+  chipItemText: {
     color: '#475569',
     fontSize: 13,
+    fontWeight: '500',
   },
-  pickerItemTextActive: {
-    color: '#FFFFFF',
+  chipItemTextActive: {
+    color: '#0080FF',
     fontWeight: 'bold',
   },
   submitBtn: {
-    backgroundColor: '#0080FF',
-    height: 50,
     borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 10,
-    shadowColor: '#0080FF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 4,
+    overflow: 'hidden',
+    marginTop: 12,
+    height: 50,
   },
-  submitBtnDisabled: {
-    backgroundColor: '#7FB3D5',
+  submitBtnGradient: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
   },
   submitBtnText: {
     color: '#FFFFFF',

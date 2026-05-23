@@ -1,4 +1,4 @@
-const { FlightLog, Drone, FlightPermit } = require('../models');
+const { FlightLog, Drone, FlightPermit, FlightZone, Violation, Notification } = require('../models');
 const { paginationParams, paginationMeta } = require('../utils/helpers');
 const { Op } = require('sequelize');
 
@@ -110,10 +110,12 @@ const create = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Bạn không có quyền ghi nhật ký cho máy bay này' });
     }
 
+    let permit = null;
     // Kiểm tra permit tồn tại và hợp lệ nếu có
     if (permit_id) {
-      const permit = await FlightPermit.findOne({
+      permit = await FlightPermit.findOne({
         where: { id: permit_id, drone_id },
+        include: [{ model: FlightZone, as: 'zone' }],
       });
       if (!permit) {
         return res.status(404).json({ success: false, message: 'Giấy phép bay không tồn tại hoặc không thuộc máy bay này' });
@@ -152,6 +154,72 @@ const create = async (req, res) => {
       max_altitude: max_altitude || null,
       distance: distance || null,
     });
+
+    // 🚀 Tự động phát hiện vi phạm thực địa khi lưu nhật ký
+    // 1. Nếu không có giấy phép bay, và độ cao cất cánh > 30m
+    if (!permit_id && max_altitude && parseFloat(max_altitude) > 30) {
+      await Violation.create({
+        drone_id,
+        user_id: drone.owner_id,
+        violation_type: 'Bay không phép quá độ cao quy định',
+        description: `Thiết bị bay cất cánh không có giấy phép được duyệt và vượt quá độ cao bay tự do tối đa (30m). Độ cao ghi nhận: ${max_altitude}m.`,
+        fine_amount: 1500000,
+        status: 'unpaid',
+        date_recorded: new Date(),
+        evidence_images: []
+      });
+
+      await Notification.create({
+        user_id: drone.owner_id,
+        title: '⚠️ Phát hiện vi phạm bay không phép',
+        content: `Thiết bị ${drone.model_name} bay không phép quá độ cao 30m. Lập biên bản phạt hành chính: 1,500,000đ`,
+        type: 'system'
+      });
+    }
+
+    // 2. Nếu có giấy phép bay, nhưng vượt trần độ cao cho phép (120m) hoặc bay vào vùng cấm
+    if (permit_id && permit) {
+      const zoneType = permit.zone ? permit.zone.zone_type : 'free';
+      const maxAltNum = max_altitude ? parseFloat(max_altitude) : 0;
+
+      if (zoneType === 'forbidden') {
+        await Violation.create({
+          drone_id,
+          user_id: drone.owner_id,
+          violation_type: 'Bay vào vùng cấm bay',
+          description: `Thiết bị bay hoạt động trong không phận cấm được bảo vệ đặc biệt: ${permit.zone?.name || 'Vùng cấm'}.`,
+          fine_amount: 5000000,
+          status: 'unpaid',
+          date_recorded: new Date(),
+          evidence_images: []
+        });
+
+        await Notification.create({
+          user_id: drone.owner_id,
+          title: '⚠️ Phát hiện vi phạm vùng cấm bay',
+          content: `Thiết bị ${drone.model_name} đi vào khu vực cấm bay: ${permit.zone?.name || 'Vùng cấm'}. Lập biên bản phạt: 5,000,000đ`,
+          type: 'system'
+        });
+      } else if (maxAltNum > 120) {
+        await Violation.create({
+          drone_id,
+          user_id: drone.owner_id,
+          violation_type: 'Bay vượt quá trần bay quy định',
+          description: `Thiết bị bay vượt quá giới hạn trần bay an toàn quốc gia (120m) tại khu vực: ${permit.zone?.name || 'Vùng bay'}. Độ cao thực tế: ${max_altitude}m.`,
+          fine_amount: 2000000,
+          status: 'unpaid',
+          date_recorded: new Date(),
+          evidence_images: []
+        });
+
+        await Notification.create({
+          user_id: drone.owner_id,
+          title: '⚠️ Phát hiện vi phạm độ cao trần bay',
+          content: `Thiết bị ${drone.model_name} vượt quá trần bay an toàn (120m). Lập biên bản phạt: 2,000,000đ`,
+          type: 'system'
+        });
+      }
+    }
 
     return res.status(201).json({ success: true, message: 'Ghi nhật ký bay thành công', data: log });
   } catch (error) {

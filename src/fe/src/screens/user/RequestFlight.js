@@ -9,13 +9,13 @@ import {
   SafeAreaView,
   StatusBar,
   ActivityIndicator,
-  Alert,
   ImageBackground,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import axiosClient from '../../api/axiosClient';
 import DateTimePickerModal from '../../components/DateTimePickerModal';
+import Alert from '../../components/CustomAlert';
 
 const RequestFlight = ({ navigation }) => {
   const [drones, setDrones] = useState([]);
@@ -43,7 +43,10 @@ const RequestFlight = ({ navigation }) => {
         ]);
 
         const approvedDrones = (dronesRes.data?.data || []).filter(
-          (d) => d.registration?.status === 'approved'
+          (d) => {
+            const reg = d.registrations && d.registrations[0];
+            return reg?.status === 'approved';
+          }
         );
 
         setDrones(approvedDrones);
@@ -124,67 +127,120 @@ const RequestFlight = ({ navigation }) => {
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
               <Ionicons name="arrow-back" size={24} color="#0F172A" />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Đăng Ký Phép Bay Chuyến</Text>
+            <Text style={styles.headerTitle}>Cấp Phép Bay Chuyến</Text>
           </View>
 
           <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            {/* Intro banner */}
+            <View style={styles.introCard}>
+              <View style={styles.introIconBg}>
+                <Ionicons name="paper-plane" size={22} color="#0080FF" />
+              </View>
+              <View style={styles.introTextCol}>
+                <Text style={styles.introTitle}>Kế hoạch bay chuyến</Text>
+                <Text style={styles.introDesc}>
+                  Chọn thiết bị đã định danh, xác định vùng hoạt động và lịch trình bay cụ thể của bạn.
+                </Text>
+              </View>
+            </View>
+
             <View style={styles.formCard}>
-              <Text style={styles.inputLabel}>Chọn thiết bị UAV đăng ký bay *</Text>
+              {/* Section 1: Chọn thiết bị */}
+              <View style={styles.sectionHeaderRow}>
+                <Ionicons name="airplane-outline" size={16} color="#0080FF" />
+                <Text style={styles.sectionTitle}>Thiết bị UAV của chuyến bay *</Text>
+              </View>
+
               {drones.length === 0 ? (
                 <Text style={styles.noDronesText}>
-                  Không tìm thấy UAV nào đã được duyệt định danh. Vui lòng đăng ký và được phê duyệt định danh trước khi xin phép bay.
+                  Không tìm thấy UAV nào đã được duyệt định danh. Vui lòng đăng ký định danh thiết bị trước khi nộp đơn xin phép bay.
                 </Text>
               ) : (
-                <View style={styles.pickerGrid}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.horizontalScroll}
+                  contentContainerStyle={{ paddingVertical: 4 }}
+                >
                   {drones.map((item) => (
                     <TouchableOpacity
                       key={item.id}
                       style={[
-                        styles.pickerItem,
-                        selectedDroneId === item.id && styles.pickerItemActive,
+                        styles.chipItem,
+                        selectedDroneId === item.id && styles.chipItemActive,
                       ]}
                       onPress={() => setSelectedDroneId(item.id)}
+                      activeOpacity={0.7}
                     >
+                      <Ionicons
+                        name="airplane"
+                        size={14}
+                        color={selectedDroneId === item.id ? '#0080FF' : '#64748B'}
+                        style={{ marginRight: 6 }}
+                      />
                       <Text
                         style={[
-                          styles.pickerItemText,
-                          selectedDroneId === item.id && styles.pickerItemTextActive,
+                          styles.chipItemText,
+                          selectedDroneId === item.id && styles.chipItemTextActive,
                         ]}
                       >
                         {item.model_name} (S/N: {item.serial_number})
                       </Text>
                     </TouchableOpacity>
                   ))}
-                </View>
+                </ScrollView>
               )}
 
-              <Text style={styles.inputLabel}>Chọn khu vực bay đăng ký *</Text>
-              <View style={styles.pickerGrid}>
+              {/* Section 2: Vùng hoạt động */}
+              <View style={[styles.sectionHeaderRow, { marginTop: 12 }]}>
+                <Ionicons name="location-outline" size={16} color="#0080FF" />
+                <Text style={styles.sectionTitle}>Khu vực bay đăng ký *</Text>
+              </View>
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.horizontalScroll}
+                contentContainerStyle={{ paddingVertical: 4 }}
+              >
                 {zones.map((item) => {
                   const isForbidden = item.zone_type === 'forbidden';
                   const isRestricted = item.zone_type === 'restricted';
                   const zoneColor = isForbidden ? '#EF4444' : isRestricted ? '#F59E0B' : '#10B981';
-
+                  
                   return (
                     <TouchableOpacity
                       key={item.id}
                       style={[
-                        styles.pickerItem,
-                        selectedZoneId === item.id && styles.pickerItemActive,
+                        styles.chipItem,
+                        selectedZoneId === item.id && styles.chipItemActive,
                       ]}
                       onPress={() => setSelectedZoneId(item.id)}
+                      activeOpacity={0.7}
                     >
+                      <Ionicons
+                        name="navigate-circle-outline"
+                        size={14}
+                        color={selectedZoneId === item.id ? '#0080FF' : zoneColor}
+                        style={{ marginRight: 6 }}
+                      />
                       <Text
                         style={[
-                          styles.pickerItemText,
-                          selectedZoneId === item.id && styles.pickerItemTextActive,
+                          styles.chipItemText,
+                          selectedZoneId === item.id && styles.chipItemTextActive,
                         ]}
                       >
-                        {item.name} <Text style={{ color: selectedZoneId === item.id ? '#FFFFFF' : zoneColor, fontWeight: 'bold' }}>({item.zone_type.toUpperCase()})</Text>
+                        {item.name} <Text style={{ color: selectedZoneId === item.id ? '#0080FF' : zoneColor, fontWeight: 'bold' }}>({item.zone_type.toUpperCase()})</Text>
                       </Text>
                     </TouchableOpacity>
                   );
                 })}
+              </ScrollView>
+
+              {/* Section 3: Lịch trình & mục đích */}
+              <View style={[styles.sectionHeaderRow, { marginTop: 12 }]}>
+                <Ionicons name="calendar-outline" size={16} color="#0080FF" />
+                <Text style={styles.sectionTitle}>Lịch trình & Mục đích</Text>
               </View>
 
               <View style={styles.inputWrapper}>
@@ -195,6 +251,7 @@ const RequestFlight = ({ navigation }) => {
                     setPickerTarget('start');
                     setPickerVisible(true);
                   }}
+                  activeOpacity={0.7}
                 >
                   <Text style={[styles.dateTimeText, !startTime && styles.placeholderText]}>
                     {startTime ? formatDisplayDateTime(startTime) : 'Chọn thời gian bắt đầu'}
@@ -211,6 +268,7 @@ const RequestFlight = ({ navigation }) => {
                     setPickerTarget('end');
                     setPickerVisible(true);
                   }}
+                  activeOpacity={0.7}
                 >
                   <Text style={[styles.dateTimeText, !endTime && styles.placeholderText]}>
                     {endTime ? formatDisplayDateTime(endTime) : 'Chọn thời gian kết thúc'}
@@ -220,27 +278,37 @@ const RequestFlight = ({ navigation }) => {
               </View>
 
               <View style={styles.inputWrapper}>
-                <Text style={styles.inputLabel}>Mục đích bay *</Text>
-                <TextInput
-                  style={[styles.input, { height: 90, textAlignVertical: 'top', paddingTop: 12 }]}
-                  placeholder="Mô tả mục đích bay, vd: Khảo sát địa hình, quay phim sự kiện..."
-                  placeholderTextColor="#94A3B8"
-                  multiline
-                  numberOfLines={4}
-                  value={purpose}
-                  onChangeText={setPurpose}
-                />
+                <Text style={styles.inputLabel}>Mục đích hoạt động bay *</Text>
+                <View style={styles.purposeInputContainer}>
+                  <Ionicons name="document-text-outline" size={18} color="#94A3B8" style={styles.purposeIcon} />
+                  <TextInput
+                    style={styles.purposeInput}
+                    placeholder="Mô tả chi tiết mục đích bay chuyến của bạn..."
+                    placeholderTextColor="#94A3B8"
+                    multiline
+                    numberOfLines={4}
+                    value={purpose}
+                    onChangeText={setPurpose}
+                  />
+                </View>
               </View>
 
               <TouchableOpacity
-                style={[styles.submitBtn, (loading || drones.length === 0) && styles.submitBtnDisabled]}
+                style={styles.submitBtn}
                 onPress={handleSubmit}
                 disabled={loading || drones.length === 0}
+                activeOpacity={0.8}
               >
                 {loading ? (
                   <ActivityIndicator color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.submitBtnText}>GỬI ĐƠN XIN PHÉP BAY</Text>
+                  <LinearGradient
+                    colors={drones.length === 0 ? ['#94A3B8', '#94A3B8'] : ['#0080FF', '#0059B2']}
+                    style={styles.submitBtnGradient}
+                  >
+                    <Ionicons name="send" size={16} color="#FFFFFF" />
+                    <Text style={styles.submitBtnText}>GỬI ĐƠN XIN PHÉP BAY</Text>
+                  </LinearGradient>
                 )}
               </TouchableOpacity>
             </View>
@@ -299,13 +367,41 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
-  loaderContainer: {
-    flex: 1,
+  scrollContent: {
+    padding: 16,
+  },
+  introCard: {
+    flexDirection: 'row',
+    backgroundColor: '#EFF6FF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
+  },
+  introIconBg: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#DBEAFE',
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 12,
   },
-  scrollContent: {
-    padding: 20,
+  introTextCol: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  introTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#1E40AF',
+  },
+  introDesc: {
+    fontSize: 12,
+    color: '#3B82F6',
+    marginTop: 2,
+    lineHeight: 16,
   },
   formCard: {
     backgroundColor: '#FFFFFF',
@@ -318,58 +414,68 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.02,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 2,
   },
-  inputLabel: {
-    color: '#475569',
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 12,
+  },
+  sectionTitle: {
     fontSize: 13,
-    marginBottom: 8,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: '#1E293B',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   noDronesText: {
     color: '#EF4444',
     fontSize: 13,
     lineHeight: 18,
     marginBottom: 16,
+    padding: 12,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
   },
-  pickerGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  horizontalScroll: {
     marginBottom: 16,
-    gap: 8,
+    paddingBottom: 4,
   },
-  pickerItem: {
+  chipItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#F1F5F9',
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    borderRadius: 8,
-    paddingHorizontal: 12,
+    borderRadius: 20,
+    paddingHorizontal: 14,
     paddingVertical: 8,
+    marginRight: 8,
   },
-  pickerItemActive: {
-    backgroundColor: '#0080FF',
+  chipItemActive: {
+    backgroundColor: '#E0F2FE',
     borderColor: '#0080FF',
   },
-  pickerItemText: {
+  chipItemText: {
     color: '#475569',
-    fontSize: 12,
+    fontSize: 13,
+    fontWeight: '500',
   },
-  pickerItemTextActive: {
-    color: '#FFFFFF',
+  chipItemTextActive: {
+    color: '#0080FF',
     fontWeight: 'bold',
   },
   inputWrapper: {
     marginBottom: 16,
   },
-  input: {
-    backgroundColor: '#FFFFFF',
-    color: '#0F172A',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 10,
-    height: 48,
-    paddingHorizontal: 16,
-    fontSize: 14,
+  inputLabel: {
+    color: '#475569',
+    fontSize: 13,
+    marginBottom: 8,
+    fontWeight: '600',
   },
   dateTimeSelector: {
     flexDirection: 'row',
@@ -389,21 +495,39 @@ const styles = StyleSheet.create({
   placeholderText: {
     color: '#94A3B8',
   },
-  submitBtn: {
-    backgroundColor: '#0080FF',
-    height: 50,
+  purposeInputContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 10,
-    shadowColor: '#0080FF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
-  submitBtnDisabled: {
-    backgroundColor: '#94A3B8',
+  purposeIcon: {
+    marginRight: 8,
+    marginTop: 4,
+  },
+  purposeInput: {
+    flex: 1,
+    color: '#0F172A',
+    fontSize: 14,
+    textAlignVertical: 'top',
+    height: 80,
+    padding: 0,
+  },
+  submitBtn: {
+    borderRadius: 10,
+    overflow: 'hidden',
+    marginTop: 12,
+    height: 50,
+  },
+  submitBtnGradient: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
   },
   submitBtnText: {
     color: '#FFFFFF',
