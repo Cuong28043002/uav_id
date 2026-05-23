@@ -12,6 +12,8 @@ import {
   ScrollView,
   ImageBackground,
   Switch,
+  FlatList,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -40,6 +42,12 @@ const SystemSettings = ({ navigation }) => {
   const [settings, setSettings] = useState([]);
   const [manufacturers, setManufacturers] = useState([]);
 
+  // Pagination / Lazy-load for manufacturers
+  const [mPage, setMPage] = useState(1);
+  const [mHasMore, setMHasMore] = useState(true);
+  const [mLoadingMore, setMLoadingMore] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
   const [settingKey, setSettingKey] = useState('');
   const [settingVal, setSettingVal] = useState('');
   const [settingDesc, setSettingDesc] = useState('');
@@ -52,20 +60,61 @@ const SystemSettings = ({ navigation }) => {
   const [editingMId, setEditingMId] = useState(null);
   const [showMForm, setShowMForm] = useState(false);
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      if (activeTab === 'settings') {
-        const response = await axiosClient.get('/settings');
-        setSettings(response.data?.data || []);
+  const fetchManufacturers = async (pageNum = 1, isRefresh = false) => {
+    if (pageNum === 1) {
+      if (isRefresh) {
+        setRefreshing(true);
       } else {
-        const response = await axiosClient.get('/manufacturers');
-        setManufacturers(response.data?.data || []);
+        setLoading(true);
       }
+    } else {
+      setMLoadingMore(true);
+    }
+
+    try {
+      const response = await axiosClient.get(`/manufacturers?page=${pageNum}&limit=10`);
+      const newItems = response.data?.data || [];
+      const total = response.data?.meta?.total || 0;
+
+      if (pageNum === 1) {
+        setManufacturers(newItems);
+        setMHasMore(newItems.length < total);
+      } else {
+        setManufacturers((prev) => [...prev, ...newItems]);
+        setMHasMore((manufacturers.length + newItems.length) < total);
+      }
+      setMPage(pageNum);
     } catch (error) {
-      Alert.alert('Lỗi', 'Không thể tải dữ liệu.');
+      Alert.alert('Lỗi', 'Không thể tải danh sách nhà sản xuất.');
     } finally {
       setLoading(false);
+      setMLoadingMore(false);
+      setRefreshing(false);
+    }
+  };
+
+  const loadMoreManufacturers = () => {
+    if (mLoadingMore || !mHasMore || loading) return;
+    fetchManufacturers(mPage + 1);
+  };
+
+  const handleRefreshManufacturers = () => {
+    fetchManufacturers(1, true);
+  };
+
+  const fetchData = async () => {
+    if (activeTab === 'settings') {
+      setLoading(true);
+      try {
+        const response = await axiosClient.get('/settings');
+        setSettings(response.data?.data || []);
+      } catch (error) {
+        Alert.alert('Lỗi', 'Không thể tải dữ liệu.');
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      fetchManufacturers(1);
     }
   };
 
@@ -146,7 +195,7 @@ const SystemSettings = ({ navigation }) => {
         setMEmail('');
         setEditingMId(null);
         setShowMForm(false);
-        fetchData();
+        fetchManufacturers(1);
       }
     } catch (error) {
       Alert.alert('Lỗi', 'Không thể lưu nhà sản xuất.');
@@ -162,7 +211,7 @@ const SystemSettings = ({ navigation }) => {
         onPress: async () => {
           try {
             await axiosClient.delete(`/manufacturers/${id}`);
-            setManufacturers((prev) => prev.filter((item) => item.id !== id));
+            fetchManufacturers(1);
           } catch (error) {
             Alert.alert('Lỗi', 'Không thể xóa nhà sản xuất.');
           }
@@ -317,86 +366,79 @@ const SystemSettings = ({ navigation }) => {
             </View>
           )}
 
-          <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-            {activeTab === 'settings' && (
-              <View>
-                {isAdmin && (
-                  <TouchableOpacity
-                    style={styles.addButton}
-                    onPress={() => {
-                      setShowSettingForm(!showSettingForm);
-                      setEditingSettingId(null);
-                      setSettingKey('');
-                      setSettingVal('');
-                      setSettingDesc('');
-                    }}
-                  >
-                    <Ionicons name={showSettingForm ? 'close' : 'add'} size={20} color="#FFFFFF" />
-                    <Text style={styles.addButtonText}>
-                      {showSettingForm ? 'Đóng form nhập' : 'Thêm tham số hệ thống'}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-
-                {isAdmin && showSettingForm && (
-                  <View style={styles.formContainer}>
-                    <Text style={styles.formTitle}>
-                      {editingSettingId ? 'Cập nhật tham số' : 'Tạo tham số mới'}
-                    </Text>
+          {activeTab === 'settings' ? (
+            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+              {isAdmin && showSettingForm && (
+                <View style={styles.formContainer}>
+                  <Text style={styles.formTitle}>Cập nhật tham số</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Mã tham số"
+                    placeholderTextColor="#94A3B8"
+                    value={settingKey}
+                    onChangeText={setSettingKey}
+                    editable={false}
+                  />
+                  {settingKey === 'registration_auto_approve' || settingVal === 'true' || settingVal === 'false' ? (
+                    <View style={styles.switchRow}>
+                      <Text style={styles.switchLabel}>Trạng thái kích hoạt:</Text>
+                      <Switch
+                        value={settingVal === 'true'}
+                        onValueChange={(val) => setSettingVal(val ? 'true' : 'false')}
+                        trackColor={{ false: '#CBD5E1', true: '#93C5FD' }}
+                        thumbColor={settingVal === 'true' ? '#0080FF' : '#F1F5F9'}
+                      />
+                    </View>
+                  ) : (
                     <TextInput
                       style={styles.input}
-                      placeholder="Mã tham số (vd: max_weight_limit)"
+                      placeholder="Giá trị thiết lập"
                       placeholderTextColor="#94A3B8"
-                      value={settingKey}
-                      onChangeText={setSettingKey}
-                      editable={!editingSettingId}
+                      value={settingVal}
+                      onChangeText={setSettingVal}
                     />
-                    {settingKey === 'registration_auto_approve' || settingVal === 'true' || settingVal === 'false' ? (
-                      <View style={styles.switchRow}>
-                        <Text style={styles.switchLabel}>Trạng thái kích hoạt:</Text>
-                        <Switch
-                          value={settingVal === 'true'}
-                          onValueChange={(val) => setSettingVal(val ? 'true' : 'false')}
-                          trackColor={{ false: '#CBD5E1', true: '#93C5FD' }}
-                          thumbColor={settingVal === 'true' ? '#0080FF' : '#F1F5F9'}
-                        />
-                      </View>
-                    ) : (
-                      <TextInput
-                        style={styles.input}
-                        placeholder="Giá trị thiết lập"
-                        placeholderTextColor="#94A3B8"
-                        value={settingVal}
-                        onChangeText={setSettingVal}
-                      />
-                    )}
-                    <TextInput
-                      style={[styles.input, { height: 70, textAlignVertical: 'top' }]}
-                      placeholder="Mô tả tham số..."
-                      placeholderTextColor="#94A3B8"
-                      multiline
-                      value={settingDesc}
-                      onChangeText={setSettingDesc}
-                    />
-                    <TouchableOpacity style={styles.saveButton} onPress={handleSaveSetting}>
+                  )}
+                  <TextInput
+                    style={[styles.input, { height: 70, textAlignVertical: 'top' }]}
+                    placeholder="Mô tả tham số..."
+                    placeholderTextColor="#94A3B8"
+                    multiline
+                    value={settingDesc}
+                    onChangeText={setSettingDesc}
+                  />
+                  <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+                    <TouchableOpacity
+                      style={[styles.saveButton, { flex: 1, backgroundColor: '#64748B' }]}
+                      onPress={() => {
+                        setShowSettingForm(false);
+                        setEditingSettingId(null);
+                        setSettingKey('');
+                        setSettingVal('');
+                        setSettingDesc('');
+                      }}
+                    >
+                      <Text style={styles.saveButtonText}>Hủy bỏ</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.saveButton, { flex: 1 }]} onPress={handleSaveSetting}>
                       <Text style={styles.saveButtonText}>Lưu thiết lập</Text>
                     </TouchableOpacity>
                   </View>
-                )}
+                </View>
+              )}
 
-                {loading ? (
-                  <ActivityIndicator size="large" color="#0080FF" style={{ marginTop: 40 }} />
-                ) : (
-                  settings
-                    .filter((item) => isAdmin || item.key_name === 'contact_email')
-                    .map((item) => {
-                      const isBool = item.key_value === 'true' || item.key_value === 'false';
-                      return (
-                        <View key={item.id} style={styles.card}>
-                          <View style={styles.cardBody}>
-                            <Text style={styles.cardTitle}>{settingLabels[item.key_name] || item.key_name}</Text>
-                            {isAdmin && <Text style={styles.cardSystemKey}>Mã hệ thống: {item.key_name}</Text>}
-                          
+              {loading ? (
+                <ActivityIndicator size="large" color="#0080FF" style={{ marginTop: 40 }} />
+              ) : (
+                settings
+                  .filter((item) => isAdmin || item.key_name === 'contact_email')
+                  .map((item) => {
+                    const isBool = item.key_value === 'true' || item.key_value === 'false';
+                    return (
+                      <View key={item.id} style={styles.card}>
+                        <View style={styles.cardBody}>
+                          <Text style={styles.cardTitle}>{settingLabels[item.key_name] || item.key_name}</Text>
+                          {isAdmin && <Text style={styles.cardSystemKey}>Mã hệ thống: {item.key_name}</Text>}
+                        
                           <View style={styles.settingRow}>
                             {isBool ? (
                               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -451,116 +493,153 @@ const SystemSettings = ({ navigation }) => {
                             >
                               <Ionicons name="create-outline" size={18} color="#0080FF" />
                             </TouchableOpacity>
-                            <TouchableOpacity
-                              style={styles.actionBtn}
-                              onPress={() => handleDeleteSetting(item.id)}
-                            >
-                              <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                            </TouchableOpacity>
+                            {!settingLabels[item.key_name] && (
+                              <TouchableOpacity
+                                style={styles.actionBtn}
+                                onPress={() => handleDeleteSetting(item.id)}
+                              >
+                                <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                              </TouchableOpacity>
+                            )}
                           </View>
                         )}
                       </View>
                     );
                   })
-                )}
-              </View>
-            )}
-
-            {activeTab === 'manufacturers' && (
-              <View>
-                {isAdmin && (
-                  <TouchableOpacity
-                    style={styles.addButton}
-                    onPress={() => {
-                      setShowMForm(!showMForm);
-                      setEditingMId(null);
-                      setMName('');
-                      setMCountry('');
-                      setMEmail('');
-                    }}
-                  >
-                    <Ionicons name={showMForm ? 'close' : 'add'} size={20} color="#FFFFFF" />
-                    <Text style={styles.addButtonText}>
-                      {showMForm ? 'Đóng form nhập' : 'Thêm nhà sản xuất'}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-
-                {isAdmin && showMForm && (
-                  <View style={styles.formContainer}>
-                    <Text style={styles.formTitle}>
-                      {editingMId ? 'Cập nhật nhà sản xuất' : 'Thêm nhà sản xuất mới'}
-                    </Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Tên nhà sản xuất (vd: DJI)"
-                      placeholderTextColor="#94A3B8"
-                      value={mName}
-                      onChangeText={setMName}
-                    />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Quốc gia (vd: China)"
-                      placeholderTextColor="#94A3B8"
-                      value={mCountry}
-                      onChangeText={setMCountry}
-                      editable={!editingMId}
-                    />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Email hỗ trợ (support@dji.com)"
-                      placeholderTextColor="#94A3B8"
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      value={mEmail}
-                      onChangeText={setMEmail}
-                    />
-                    <TouchableOpacity style={styles.saveButton} onPress={handleSaveManufacturer}>
-                      <Text style={styles.saveButtonText}>Lưu thông tin</Text>
-                    </TouchableOpacity>
+              )}
+            </ScrollView>
+          ) : (
+            <FlatList
+              data={manufacturers}
+              keyExtractor={(item) => item.id.toString()}
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={false}
+              renderItem={({ item }) => (
+                <View style={styles.card}>
+                  <View style={styles.cardBody}>
+                    <Text style={styles.cardTitle}>{item.name}</Text>
+                    <Text style={styles.cardDesc}>Quốc gia: {item.country || 'N/A'}</Text>
+                    {item.support_email && (
+                      <Text style={styles.cardDesc}>Email: {item.support_email}</Text>
+                    )}
                   </View>
-                )}
-
-                {loading ? (
-                  <ActivityIndicator size="large" color="#0080FF" style={{ marginTop: 40 }} />
-                ) : (
-                  manufacturers.map((item) => (
-                    <View key={item.id} style={styles.card}>
-                      <View style={styles.cardBody}>
-                        <Text style={styles.cardTitle}>{item.name}</Text>
-                        <Text style={styles.cardDesc}>Quốc gia: {item.country || 'N/A'}</Text>
-                        {item.support_email && (
-                          <Text style={styles.cardDesc}>Email: {item.support_email}</Text>
-                        )}
-                      </View>
-                      {isAdmin && (
-                        <View style={styles.cardActions}>
-                          <TouchableOpacity
-                            style={styles.actionBtn}
-                            onPress={() => {
-                              setEditingMId(item.id);
-                              setMName(item.name);
-                              setMCountry(item.country || '');
-                              setMEmail(item.support_email || '');
-                              setShowMForm(true);
-                            }}
-                          >
-                            <Ionicons name="create-outline" size={18} color="#0080FF" />
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={styles.actionBtn}
-                            onPress={() => handleDeleteManufacturer(item.id)}
-                          >
-                            <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                          </TouchableOpacity>
-                        </View>
-                      )}
+                  {isAdmin && (
+                    <View style={styles.cardActions}>
+                      <TouchableOpacity
+                        style={styles.actionBtn}
+                        onPress={() => {
+                          setEditingMId(item.id);
+                          setMName(item.name);
+                          setMCountry(item.country || '');
+                          setMEmail(item.support_email || '');
+                          setShowMForm(true);
+                        }}
+                      >
+                        <Ionicons name="create-outline" size={18} color="#0080FF" />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.actionBtn}
+                        onPress={() => handleDeleteManufacturer(item.id)}
+                      >
+                        <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                      </TouchableOpacity>
                     </View>
-                  ))
-                )}
-              </View>
-            )}
-          </ScrollView>
+                  )}
+                </View>
+              )}
+              ListHeaderComponent={
+                <View>
+                  {isAdmin && (
+                    <TouchableOpacity
+                      style={styles.addButton}
+                      onPress={() => {
+                        setShowMForm(!showMForm);
+                        setEditingMId(null);
+                        setMName('');
+                        setMCountry('');
+                        setMEmail('');
+                      }}
+                    >
+                      <Ionicons name={showMForm ? 'close' : 'add'} size={20} color="#FFFFFF" />
+                      <Text style={styles.addButtonText}>
+                        {showMForm ? 'Đóng form nhập' : 'Thêm nhà sản xuất'}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {isAdmin && showMForm && (
+                    <View style={styles.formContainer}>
+                      <Text style={styles.formTitle}>
+                        {editingMId ? 'Cập nhật nhà sản xuất' : 'Thêm nhà sản xuất mới'}
+                      </Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Tên nhà sản xuất (vd: DJI)"
+                        placeholderTextColor="#94A3B8"
+                        value={mName}
+                        onChangeText={setMName}
+                      />
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Quốc gia (vd: China)"
+                        placeholderTextColor="#94A3B8"
+                        value={mCountry}
+                        onChangeText={setMCountry}
+                        editable={!editingMId}
+                      />
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Email hỗ trợ (support@dji.com)"
+                        placeholderTextColor="#94A3B8"
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        value={mEmail}
+                        onChangeText={setMEmail}
+                      />
+                      <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+                        <TouchableOpacity
+                          style={[styles.saveButton, { flex: 1, backgroundColor: '#64748B' }]}
+                          onPress={() => {
+                            setShowMForm(false);
+                            setEditingMId(null);
+                            setMName('');
+                            setMCountry('');
+                            setMEmail('');
+                          }}
+                        >
+                          <Text style={styles.saveButtonText}>Hủy bỏ</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.saveButton, { flex: 1 }]} onPress={handleSaveManufacturer}>
+                          <Text style={styles.saveButtonText}>Lưu thông tin</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+
+                  {loading && manufacturers.length === 0 && (
+                    <ActivityIndicator size="large" color="#0080FF" style={{ marginTop: 40 }} />
+                  )}
+                </View>
+              }
+              ListEmptyComponent={
+                !loading && manufacturers.length === 0 ? (
+                  <View style={{ alignItems: 'center', marginTop: 40 }}>
+                    <Text style={{ color: '#64748B', fontSize: 14 }}>Không tìm thấy nhà sản xuất nào.</Text>
+                  </View>
+                ) : null
+              }
+              ListFooterComponent={
+                mLoadingMore ? (
+                  <ActivityIndicator size="small" color="#0080FF" style={{ marginVertical: 16 }} />
+                ) : null
+              }
+              onEndReached={loadMoreManufacturers}
+              onEndReachedThreshold={0.2}
+              refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={handleRefreshManufacturers} colors={['#0080FF']} />
+              }
+            />
+          )}
         </SafeAreaView>
       </LinearGradient>
     </ImageBackground>
