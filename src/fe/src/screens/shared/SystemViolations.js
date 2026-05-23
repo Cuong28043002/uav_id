@@ -10,11 +10,15 @@ import {
   StatusBar,
   ImageBackground,
   TextInput,
+  Modal,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import axiosClient from '../../api/axiosClient';
 import Alert from '../../components/CustomAlert';
+
+const { width, height } = Dimensions.get('window');
 
 const formatCurrency = (amount) => {
   if (!amount && amount !== 0) return 'Cảnh cáo';
@@ -23,11 +27,148 @@ const formatCurrency = (amount) => {
   return numericAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' VNĐ';
 };
 
+const CustomDatePickerModal = ({ visible, onClose, onSelect, value }) => {
+  const parseDate = (dateStr) => {
+    if (!dateStr) return new Date();
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0]);
+      const month = parseInt(parts[1]) - 1;
+      const day = parseInt(parts[2]);
+      if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+        return new Date(year, month, day);
+      }
+    }
+    return new Date();
+  };
+
+  const [currentDate, setCurrentDate] = useState(parseDate(value));
+
+  useEffect(() => {
+    if (visible) {
+      setCurrentDate(parseDate(value));
+    }
+  }, [visible, value]);
+
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+
+  const monthNames = [
+    'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
+    'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'
+  ];
+
+  const getDaysInMonth = (y, m) => {
+    return new Date(y, m + 1, 0).getDate();
+  };
+
+  const getFirstDayOfMonth = (y, m) => {
+    return new Date(y, m, 1).getDay();
+  };
+
+  const daysInMonth = getDaysInMonth(year, month);
+  const firstDay = getFirstDayOfMonth(year, month);
+
+  const handlePrevMonth = () => {
+    setCurrentDate(new Date(year, month - 1, 1));
+  };
+
+  const handleNextMonth = () => {
+    setCurrentDate(new Date(year, month + 1, 1));
+  };
+
+  const handleSelectDay = (day) => {
+    const formattedMonth = String(month + 1).padStart(2, '0');
+    const formattedDay = String(day).padStart(2, '0');
+    const dateStr = `${year}-${formattedMonth}-${formattedDay}`;
+    onSelect(dateStr);
+  };
+
+  const grid = [];
+  const emptySlots = firstDay === 0 ? 6 : firstDay - 1;
+
+  for (let i = 0; i < emptySlots; i++) {
+    grid.push(<View key={`empty-${i}`} style={styles.gridCellEmpty} />);
+  }
+
+  const selectedParsed = value ? parseDate(value) : null;
+  const isSelected = (day) => {
+    if (!selectedParsed) return false;
+    return (
+      selectedParsed.getFullYear() === year &&
+      selectedParsed.getMonth() === month &&
+      selectedParsed.getDate() === day
+    );
+  };
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const active = isSelected(d);
+    grid.push(
+      <TouchableOpacity
+        key={`day-${d}`}
+        style={[styles.gridCell, active && styles.gridCellActive]}
+        onPress={() => handleSelectDay(d)}
+      >
+        <Text style={[styles.gridCellText, active && styles.gridCellTextActive]}>{d}</Text>
+      </TouchableOpacity>
+    );
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.modalOverlay}>
+        <View style={styles.pickerContainer}>
+          <View style={styles.pickerHeader}>
+            <TouchableOpacity onPress={() => setCurrentDate(new Date(year - 1, month, 1))} style={styles.navBtn}>
+              <Ionicons name="play-back" size={16} color="#475569" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handlePrevMonth} style={styles.navBtn}>
+              <Ionicons name="chevron-back" size={18} color="#0F172A" />
+            </TouchableOpacity>
+            <Text style={styles.pickerMonthTitle}>{monthNames[month]} - {year}</Text>
+            <TouchableOpacity onPress={handleNextMonth} style={styles.navBtn}>
+              <Ionicons name="chevron-forward" size={18} color="#0F172A" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setCurrentDate(new Date(year + 1, month, 1))} style={styles.navBtn}>
+              <Ionicons name="play-forward" size={16} color="#475569" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.weekLabelsRow}>
+            {['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map((label, idx) => (
+              <Text key={idx} style={[styles.weekLabel, label === 'CN' && styles.weekLabelSunday]}>{label}</Text>
+            ))}
+          </View>
+
+          <View style={styles.gridContainer}>
+            {grid}
+          </View>
+
+          <View style={styles.pickerFooter}>
+            <TouchableOpacity onPress={onClose} style={styles.pickerCloseBtn}>
+              <Text style={styles.pickerCloseBtnText}>Đóng</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
 const SystemViolations = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('unpaid'); // 'unpaid', 'paid', 'all'
   const [violations, setViolations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Advanced Filter States
+  const [showFilters, setShowFilters] = useState(false);
+  const [minFine, setMinFine] = useState('');
+  const [maxFine, setMaxFine] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [datePickerVisible, setDatePickerVisible] = useState(false);
+  const [datePickerTarget, setDatePickerTarget] = useState(''); // 'dateFrom' or 'dateTo'
   
   // Pagination & Refresh States
   const [page, setPage] = useState(1);
@@ -49,10 +190,22 @@ const SystemViolations = ({ navigation }) => {
     try {
       const statusParam = activeTab === 'all' ? '' : `&status=${activeTab}`;
       const queryParam = searchQuery.trim() ? `&q=${encodeURIComponent(searchQuery.trim())}` : '';
+      let url = `/violations?page=${pageNum}&limit=10${statusParam}${queryParam}`;
       
-      const response = await axiosClient.get(
-        `/violations?page=${pageNum}&limit=10${statusParam}${queryParam}`
-      );
+      if (minFine.trim()) {
+        url += `&min_fine=${encodeURIComponent(minFine.trim())}`;
+      }
+      if (maxFine.trim()) {
+        url += `&max_fine=${encodeURIComponent(maxFine.trim())}`;
+      }
+      if (dateFrom.trim()) {
+        url += `&date_from=${encodeURIComponent(dateFrom.trim())}`;
+      }
+      if (dateTo.trim()) {
+        url += `&date_to=${encodeURIComponent(dateTo.trim())}`;
+      }
+
+      const response = await axiosClient.get(url);
       
       const newData = response.data?.data || [];
       const meta = response.data?.meta;
@@ -189,10 +342,11 @@ const SystemViolations = ({ navigation }) => {
           {/* SEARCH BAR */}
           <View style={styles.searchContainer}>
             <View style={styles.searchBar}>
-              <Ionicons name="search-outline" size={20} color="#64748B" style={styles.searchIcon} />
+              <Ionicons name="search-outline" size={18} color="#64748B" style={styles.searchIcon} />
               <TextInput
                 style={styles.searchInput}
-                placeholder="Tìm loại vi phạm, mô tả..."
+                placeholder="Tìm loại vi phạm, mô tả, S/N, mẫu, tên..."
+                placeholderTextColor="#94A3B8"
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 onSubmitEditing={handleSearch}
@@ -203,10 +357,134 @@ const SystemViolations = ({ navigation }) => {
                 </TouchableOpacity>
               )}
             </View>
-            <TouchableOpacity style={styles.searchBtn} onPress={handleSearch}>
-              <Text style={styles.searchBtnText}>Tìm</Text>
+            <TouchableOpacity 
+              style={[styles.filterToggleBtn, (minFine || maxFine || dateFrom || dateTo || showFilters) && styles.filterToggleBtnActive]}
+              onPress={() => setShowFilters(!showFilters)}
+            >
+              <Ionicons 
+                name={showFilters ? "funnel" : "funnel-outline"} 
+                size={20} 
+                color={minFine || maxFine || dateFrom || dateTo || showFilters ? "#FFFFFF" : "#64748B"} 
+              />
             </TouchableOpacity>
           </View>
+
+          {/* ADVANCED FILTER PANEL */}
+          {showFilters && (
+            <View style={styles.advancedFiltersPanel}>
+              <Text style={styles.filterGroupTitle}>Bộ lọc nâng cao</Text>
+
+              {/* Date range filter */}
+              <View style={styles.filterSection}>
+                <Text style={styles.filterLabel}>Ngày ghi nhận (Năm-Tháng-Ngày)</Text>
+                <View style={styles.dateInputsRow}>
+                  <TouchableOpacity
+                    style={styles.dateInputBtn}
+                    onPress={() => {
+                      setDatePickerTarget('dateFrom');
+                      setDatePickerVisible(true);
+                    }}
+                  >
+                    <Text style={[styles.dateInputBtnText, !dateFrom && styles.datePlaceholderText]}>
+                      {dateFrom || 'Từ ngày'}
+                    </Text>
+                    {dateFrom ? (
+                      <TouchableOpacity 
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          setDateFrom('');
+                        }}
+                        style={styles.clearDateIcon}
+                      >
+                        <Ionicons name="close-circle" size={16} color="#94A3B8" />
+                      </TouchableOpacity>
+                    ) : (
+                      <Ionicons name="calendar-outline" size={16} color="#64748B" />
+                    )}
+                  </TouchableOpacity>
+
+                  <Text style={styles.dateRangeSeparator}>đến</Text>
+
+                  <TouchableOpacity
+                    style={styles.dateInputBtn}
+                    onPress={() => {
+                      setDatePickerTarget('dateTo');
+                      setDatePickerVisible(true);
+                    }}
+                  >
+                    <Text style={[styles.dateInputBtnText, !dateTo && styles.datePlaceholderText]}>
+                      {dateTo || 'Đến ngày'}
+                    </Text>
+                    {dateTo ? (
+                      <TouchableOpacity 
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          setDateTo('');
+                        }}
+                        style={styles.clearDateIcon}
+                      >
+                        <Ionicons name="close-circle" size={16} color="#94A3B8" />
+                      </TouchableOpacity>
+                    ) : (
+                      <Ionicons name="calendar-outline" size={16} color="#64748B" />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Fine range filter */}
+              <View style={styles.filterSection}>
+                <Text style={styles.filterLabel}>Mức phạt tiền (VNĐ)</Text>
+                <View style={styles.dateInputsRow}>
+                  <TextInput
+                    style={styles.dateInput}
+                    placeholder="Tối thiểu (vd: 100000)"
+                    placeholderTextColor="#94A3B8"
+                    keyboardType="numeric"
+                    value={minFine}
+                    onChangeText={setMinFine}
+                  />
+                  <Text style={styles.dateRangeSeparator}>đến</Text>
+                  <TextInput
+                    style={styles.dateInput}
+                    placeholder="Tối đa (vd: 5000000)"
+                    placeholderTextColor="#94A3B8"
+                    keyboardType="numeric"
+                    value={maxFine}
+                    onChangeText={setMaxFine}
+                  />
+                </View>
+              </View>
+
+              {/* Filter Actions */}
+              <View style={styles.filterActionsRow}>
+                <TouchableOpacity 
+                  style={styles.resetFilterBtn} 
+                  onPress={() => {
+                    setMinFine('');
+                    setMaxFine('');
+                    setDateFrom('');
+                    setDateTo('');
+                    setShowFilters(false);
+                    setTimeout(() => {
+                      fetchViolations(1);
+                    }, 50);
+                  }}
+                >
+                  <Text style={styles.resetFilterBtnText}>Thiết lập lại</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.applyFilterBtn}
+                  onPress={() => {
+                    setShowFilters(false);
+                    fetchViolations(1);
+                  }}
+                >
+                  <Text style={styles.applyFilterBtnText}>Áp dụng bộ lọc</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
 
           {/* TABS */}
           <View style={styles.tabBar}>
@@ -266,6 +544,21 @@ const SystemViolations = ({ navigation }) => {
               }
             />
           )}
+
+          {/* Custom Date Picker Modal */}
+          <CustomDatePickerModal
+            visible={datePickerVisible}
+            onClose={() => setDatePickerVisible(false)}
+            value={datePickerTarget === 'dateFrom' ? dateFrom : dateTo}
+            onSelect={(dateStr) => {
+              if (datePickerTarget === 'dateFrom') {
+                setDateFrom(dateStr);
+              } else {
+                setDateTo(dateStr);
+              }
+              setDatePickerVisible(false);
+            }}
+          />
         </SafeAreaView>
       </LinearGradient>
     </ImageBackground>
@@ -329,21 +622,203 @@ const styles = StyleSheet.create({
     color: '#0F172A',
     fontSize: 14,
     height: '100%',
+    paddingVertical: 0,
   },
   clearButton: {
     padding: 4,
   },
-  searchBtn: {
-    backgroundColor: '#0080FF',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+  filterToggleBtn: {
+    width: 44,
+    height: 44,
     borderRadius: 12,
+    backgroundColor: '#F1F5F9',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  searchBtnText: {
-    color: '#FFFFFF',
+  filterToggleBtnActive: {
+    backgroundColor: '#0080FF',
+  },
+  
+  // Advanced filters panel
+  advancedFiltersPanel: {
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  filterGroupTitle: {
     fontSize: 14,
+    fontWeight: 'bold',
+    color: '#0F172A',
+    marginBottom: 12,
+  },
+  filterSection: {
+    marginBottom: 14,
+  },
+  filterLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+    marginBottom: 8,
+  },
+  dateInputsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dateInputBtn: {
+    flex: 1,
+    height: 38,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dateInputBtnText: {
+    fontSize: 12,
+    color: '#0F172A',
+  },
+  datePlaceholderText: {
+    color: '#94A3B8',
+  },
+  clearDateIcon: {
+    padding: 2,
+  },
+  
+  // Custom Date Picker Modal styling
+  pickerContainer: {
+    width: width * 0.85,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
+    alignItems: 'center',
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 12,
+  },
+  navBtn: {
+    padding: 6,
+  },
+  pickerMonthTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#0F172A',
+  },
+  weekLabelsRow: {
+    flexDirection: 'row',
+    width: '100%',
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    paddingBottom: 6,
+    marginBottom: 8,
+  },
+  weekLabel: {
+    width: `${100 / 7}%`,
+    textAlign: 'center',
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  weekLabelSunday: {
+    color: '#EF4444',
+  },
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    width: '100%',
+  },
+  gridCell: {
+    width: `${100 / 7}%`,
+    aspectRatio: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 8,
+    marginVertical: 2,
+  },
+  gridCellActive: {
+    backgroundColor: '#0080FF',
+  },
+  gridCellEmpty: {
+    width: `${100 / 7}%`,
+    aspectRatio: 1,
+  },
+  gridCellText: {
+    fontSize: 12,
+    color: '#334155',
+    fontWeight: '500',
+  },
+  gridCellTextActive: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+  },
+  pickerFooter: {
+    width: '100%',
+    alignItems: 'flex-end',
+    marginTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    paddingTop: 8,
+  },
+  pickerCloseBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    backgroundColor: '#F1F5F9',
+  },
+  pickerCloseBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  dateRangeSeparator: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  filterActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 6,
+  },
+  resetFilterBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+  },
+  resetFilterBtnText: {
+    fontSize: 13,
+    color: '#475569',
+    fontWeight: '600',
+  },
+  applyFilterBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#0080FF',
+  },
+  applyFilterBtnText: {
+    fontSize: 13,
+    color: '#FFFFFF',
     fontWeight: 'bold',
   },
   tabBar: {

@@ -22,11 +22,15 @@ const getAll = async (req, res) => {
 
     const where = {};
 
-    // Tìm kiếm theo loại vi phạm hoặc mô tả
+    // Tìm kiếm rộng theo loại vi phạm, mô tả, thông tin drone (serial, model), thông tin người vi phạm (tên, SĐT)
     if (q) {
       where[Op.or] = [
         { violation_type: { [Op.like]: `%${q}%` } },
         { description: { [Op.like]: `%${q}%` } },
+        { '$drone.serial_number$': { [Op.like]: `%${q}%` } },
+        { '$drone.model_name$': { [Op.like]: `%${q}%` } },
+        { '$user.full_name$': { [Op.like]: `%${q}%` } },
+        { '$user.phone$': { [Op.like]: `%${q}%` } },
       ];
     }
 

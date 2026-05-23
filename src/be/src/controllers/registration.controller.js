@@ -18,15 +18,23 @@ const getAll = async (req, res) => {
       issue_to,
       created_from,
       created_to,
+      manufacturer_id,
+      category_id,
       sort_by = 'createdAt',
       sort_order = 'DESC',
     } = req.query;
 
     const where = {};
 
-    // Tìm kiếm theo mã định danh
+    // Tìm kiếm mở rộng theo mã định danh, serial number, model, tên/SĐT chủ sở hữu
     if (q) {
-      where.identification_code = { [Op.like]: `%${q}%` };
+      where[Op.or] = [
+        { identification_code: { [Op.like]: `%${q}%` } },
+        { '$drone.serial_number$': { [Op.like]: `%${q}%` } },
+        { '$drone.model_name$': { [Op.like]: `%${q}%` } },
+        { '$drone.owner.full_name$': { [Op.like]: `%${q}%` } },
+        { '$drone.owner.phone$': { [Op.like]: `%${q}%` } },
+      ];
     }
 
     if (status) where.status = status;
@@ -50,6 +58,12 @@ const getAll = async (req, res) => {
     const droneWhere = {};
     if (req.user.role.name === 'user') {
       droneWhere.owner_id = req.user.id;
+    }
+    if (manufacturer_id) {
+      droneWhere.manufacturer_id = manufacturer_id;
+    }
+    if (category_id) {
+      droneWhere.category_id = category_id;
     }
 
     const validSortFields = ['id', 'status', 'issue_date', 'createdAt'];

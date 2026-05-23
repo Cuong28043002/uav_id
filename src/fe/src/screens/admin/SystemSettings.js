@@ -24,6 +24,9 @@ const settingLabels = {
   registration_auto_approve: 'Tự động phê duyệt hồ sơ',
   max_altitude_default: 'Độ cao bay tối đa mặc định (m)',
   contact_email: 'Email hỗ trợ kỹ thuật',
+  contact_phone: 'Số điện thoại hỗ trợ',
+  contact_address: 'Địa chỉ liên hệ',
+  contact_hours: 'Thời gian làm việc',
 };
 
 const SystemSettings = ({ navigation }) => {
@@ -167,6 +170,112 @@ const SystemSettings = ({ navigation }) => {
       },
     ]);
   };
+
+  if (!isAdmin) {
+    const contactEmailSetting = settings.find(s => s.key_name === 'contact_email');
+    const contactEmail = contactEmailSetting ? contactEmailSetting.key_value : 'support@uavid.vn';
+    const contactEmailDesc = contactEmailSetting ? contactEmailSetting.description : 'Email hỗ trợ kỹ thuật và chính sách hệ thống';
+
+    const contactPhoneSetting = settings.find(s => s.key_name === 'contact_phone');
+    const contactPhone = contactPhoneSetting ? contactPhoneSetting.key_value : '1900 8080';
+    const contactPhoneDesc = contactPhoneSetting ? contactPhoneSetting.description : 'Hotline hỗ trợ khẩn cấp 24/7';
+
+    const contactAddressSetting = settings.find(s => s.key_name === 'contact_address');
+    const contactAddress = contactAddressSetting ? contactAddressSetting.key_value : '123 Đường Láng, Đống Đa, Hà Nội, Việt Nam';
+    const contactAddressDesc = contactAddressSetting ? contactAddressSetting.description : 'Trụ sở chính Cục Hàng Không Việt Nam';
+
+    const contactHoursSetting = settings.find(s => s.key_name === 'contact_hours');
+    const contactHours = contactHoursSetting ? contactHoursSetting.key_value : '8:00 - 17:30 (Thứ 2 - Thứ 6)';
+    const contactHoursDesc = contactHoursSetting ? contactHoursSetting.description : 'Giờ làm việc hành chính';
+
+    return (
+      <ImageBackground
+        source={require('../../../assets/light_bg.png')}
+        style={styles.backgroundImage}
+        resizeMode="cover"
+      >
+        <LinearGradient
+          colors={['rgba(255, 255, 255, 0.7)', 'rgba(248, 250, 252, 0.85)', 'rgba(226, 232, 240, 0.95)']}
+          style={styles.gradientOverlay}
+        >
+          <SafeAreaView style={styles.container}>
+            <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+            <View style={styles.header}>
+              <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                <Ionicons name="arrow-back" size={24} color="#0F172A" />
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>Hỗ Trợ & Liên Hệ</Text>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.supportScrollContent} showsVerticalScrollIndicator={false}>
+              {/* Banner card */}
+              <View style={styles.supportBanner}>
+                <LinearGradient
+                  colors={['#0080FF', '#0059B2']}
+                  style={styles.supportBannerGradient}
+                >
+                  <Ionicons name="shield-checkmark" size={48} color="#FFFFFF" />
+                  <Text style={styles.supportBannerTitle}>Hệ Thống Định Danh UAV</Text>
+                  <Text style={styles.supportBannerSubtitle}>Cổng thông tin hỗ trợ kỹ thuật và liên hệ chính thức</Text>
+                </LinearGradient>
+              </View>
+
+              {/* Contact list */}
+              <View style={styles.contactList}>
+                {/* Phone */}
+                <View style={styles.contactCard}>
+                  <View style={styles.contactIconBg}>
+                    <Ionicons name="call" size={24} color="#0080FF" />
+                  </View>
+                  <View style={styles.contactDetails}>
+                    <Text style={styles.contactItemLabel}>Tổng đài hỗ trợ</Text>
+                    <Text style={styles.contactItemValue}>{contactPhone}</Text>
+                    <Text style={styles.contactItemDesc}>{contactPhoneDesc}</Text>
+                  </View>
+                </View>
+
+                {/* Email */}
+                <View style={styles.contactCard}>
+                  <View style={styles.contactIconBg}>
+                    <Ionicons name="mail" size={24} color="#0080FF" />
+                  </View>
+                  <View style={styles.contactDetails}>
+                    <Text style={styles.contactItemLabel}>Email kỹ thuật</Text>
+                    <Text style={styles.contactItemValue}>{contactEmail}</Text>
+                    <Text style={styles.contactItemDesc}>{contactEmailDesc}</Text>
+                  </View>
+                </View>
+
+                {/* Address */}
+                <View style={styles.contactCard}>
+                  <View style={styles.contactIconBg}>
+                    <Ionicons name="location" size={24} color="#0080FF" />
+                  </View>
+                  <View style={styles.contactDetails}>
+                    <Text style={styles.contactItemLabel}>Địa chỉ trụ sở</Text>
+                    <Text style={styles.contactItemValue}>{contactAddress}</Text>
+                    <Text style={styles.contactItemDesc}>{contactAddressDesc}</Text>
+                  </View>
+                </View>
+
+                {/* Working hours */}
+                <View style={styles.contactCard}>
+                  <View style={styles.contactIconBg}>
+                    <Ionicons name="time" size={24} color="#0080FF" />
+                  </View>
+                  <View style={styles.contactDetails}>
+                    <Text style={styles.contactItemLabel}>Thời gian làm việc</Text>
+                    <Text style={styles.contactItemValue}>{contactHours}</Text>
+                    <Text style={styles.contactItemDesc}>{contactHoursDesc}</Text>
+                  </View>
+                </View>
+              </View>
+            </ScrollView>
+          </SafeAreaView>
+        </LinearGradient>
+      </ImageBackground>
+    );
+  }
 
   return (
     <ImageBackground
@@ -651,6 +760,86 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     backgroundColor: '#F1F5F9',
     borderRadius: 8,
+  },
+  supportScrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 40,
+  },
+  supportBanner: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    marginBottom: 20,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+  },
+  supportBannerGradient: {
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  supportBannerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginTop: 12,
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  supportBannerSubtitle: {
+    fontSize: 13,
+    color: '#E2E8F0',
+    textAlign: 'center',
+    opacity: 0.9,
+    lineHeight: 18,
+  },
+  contactList: {
+    gap: 12,
+  },
+  contactCard: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  contactIconBg: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#EBF3FC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  contactDetails: {
+    flex: 1,
+  },
+  contactItemLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+    marginBottom: 2,
+    textTransform: 'uppercase',
+  },
+  contactItemValue: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#0080FF',
+    marginBottom: 4,
+  },
+  contactItemDesc: {
+    fontSize: 12,
+    color: '#64748B',
+    lineHeight: 16,
   },
 });
 
