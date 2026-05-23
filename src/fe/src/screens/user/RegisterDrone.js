@@ -81,7 +81,7 @@ const RegisterDrone = ({ navigation }) => {
         });
 
         Alert.alert('Thành công', 'Đã lưu thông tin UAV và tự động nộp hồ sơ định danh.', [
-          { text: 'Quay lại danh sách', onPress: () => navigation.replace('MyDrones') }
+          { text: 'Quay lại danh sách', onPress: () => navigation.navigate('UserHome', { screen: 'MyDrones' }) }
         ]);
       } else {
         Alert.alert('Lỗi', 'Không thể tạo mới thiết bị.');
