@@ -3,11 +3,13 @@ import {
   StyleSheet,
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   FlatList,
   ActivityIndicator,
   SafeAreaView,
   StatusBar,
+  ScrollView,
   ImageBackground,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,59 +28,112 @@ const MyViolations = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('unpaid');
   const [violations, setViolations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
 
-  const fetchViolations = async () => {
-    setLoading(true);
+  // Filters
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterDroneId, setFilterDroneId] = useState(null);
+  const [drones, setDrones] = useState([]);
+
+  const fetchMetadata = async () => {
     try {
-      const response = await axiosClient.get(`/violations?status=${activeTab}`);
-      setViolations(response.data?.data || []);
+      const dronesRes = await axiosClient.get('/drones');
+      setDrones(dronesRes.data?.data || []);
     } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const fetchViolations = async (pageNum, isRefresh = false) => {
+    if (pageNum === 1) {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+    } else {
+      setLoadingMore(true);
+    }
+
+    try {
+      const params = {
+        status: activeTab,
+        page: pageNum,
+        limit: 10,
+      };
+      if (filterDroneId) {
+        params.drone_id = filterDroneId;
+      }
+
+      const response = await axiosClient.get('/violations', { params });
+      const data = response.data?.data || [];
+
+      if (pageNum === 1) {
+        setViolations(data);
+      } else {
+        setViolations((prev) => {
+          const merged = [...prev];
+          data.forEach((item) => {
+            if (!merged.some((existing) => existing.id === item.id)) {
+              merged.push(item);
+            }
+          });
+          return merged;
+        });
+      }
+
+      setHasMore(data.length === 10);
+    } catch (error) {
+      console.error(error);
       Alert.alert('Lỗi', 'Không thể tải biên bản vi phạm.');
     } finally {
       setLoading(false);
+      setLoadingMore(false);
+      setRefreshing(false);
     }
   };
 
   useEffect(() => {
-    fetchViolations();
-  }, [activeTab]);
+    fetchMetadata();
+  }, []);
+
+  useEffect(() => {
+    setPage(1);
+    fetchViolations(1);
+  }, [activeTab, filterDroneId]);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      fetchViolations();
+      setPage(1);
+      fetchViolations(1);
     });
     return unsubscribe;
-  }, [navigation, activeTab]);
+  }, [navigation, activeTab, filterDroneId]);
 
-  const handlePayMock = (item) => {
-    Alert.alert(
-      'Thanh toán điện tử',
-      `Bạn đang thực hiện nộp phạt trực tuyến cho lỗi [${item.violation_type}] với số tiền ${formatCurrency(item.fine_amount)}.\n\nHệ thống sẽ chuyển hướng đến cổng dịch vụ công.`,
-      [
-        { text: 'Hủy', style: 'cancel' },
-        {
-          text: 'Xác nhận nộp',
-          onPress: async () => {
-            try {
-              // Call API to mark violation as paid
-              const response = await axiosClient.put(`/violations/${item.id}/pay`);
-              if (response.data?.success) {
-                Alert.alert(
-                  'Thành công',
-                  'Đã hoàn tất thanh toán biên lai xử phạt hành chính trực tuyến!',
-                  [{ text: 'OK', onPress: () => fetchViolations() }]
-                );
-              } else {
-                Alert.alert('Lỗi', 'Không thể cập nhật trạng thái thanh toán.');
-              }
-            } catch (error) {
-              Alert.alert('Lỗi', 'Thao tác nộp phạt gặp lỗi kết nối.');
-            }
-          },
-        },
-      ]
-    );
+  const handleRefresh = () => {
+    setPage(1);
+    fetchViolations(1, true);
   };
+
+  const handleLoadMore = () => {
+    if (!loading && !loadingMore && hasMore) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      fetchViolations(nextPage);
+    }
+  };
+
+  // Local filtering based on search query
+  const filteredViolations = violations.filter((item) => {
+    const type = (item.violation_type || '').toLowerCase();
+    const desc = (item.description || '').toLowerCase();
+    const model = (item.drone?.model_name || '').toLowerCase();
+    const query = searchQuery.toLowerCase();
+    return type.includes(query) || desc.includes(query) || model.includes(query);
+  });
 
   const renderViolationItem = ({ item }) => (
     <TouchableOpacity
@@ -109,19 +164,17 @@ const MyViolations = ({ navigation }) => {
           {item.date_recorded ? new Date(item.date_recorded).toLocaleDateString('vi-VN') : 'N/A'}
         </Text>
         {item.description && (
-          <Text style={styles.descriptionBox}>{item.description}</Text>
+          <Text style={styles.descriptionBox} numberOfLines={2}>{item.description}</Text>
         )}
       </View>
 
-      {activeTab === 'unpaid' && item.fine_amount > 0 && (
-        <TouchableOpacity
-          style={styles.payBtn}
-          onPress={() => navigation.navigate('ViolationDetail', { violationId: item.id })}
-        >
-          <Ionicons name="card-outline" size={18} color="#FFFFFF" />
-          <Text style={styles.payBtnText}>Xem chi tiết & Nộp phạt</Text>
-        </TouchableOpacity>
-      )}
+      <TouchableOpacity
+        style={styles.detailBtn}
+        onPress={() => navigation.navigate('ViolationDetail', { violationId: item.id })}
+      >
+        <Ionicons name="eye-outline" size={16} color="#0080FF" />
+        <Text style={styles.detailBtnText}>Xem chi tiết biên bản</Text>
+      </TouchableOpacity>
     </TouchableOpacity>
   );
 
@@ -141,7 +194,7 @@ const MyViolations = ({ navigation }) => {
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
               <Ionicons name="arrow-back" size={24} color="#0F172A" />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Vi Phạm & Nộp Phạt</Text>
+            <Text style={styles.headerTitle}>Vi Phạm & Xử Phạt</Text>
           </View>
 
           <View style={styles.tabBar}>
@@ -150,7 +203,7 @@ const MyViolations = ({ navigation }) => {
               onPress={() => setActiveTab('unpaid')}
             >
               <Text style={[styles.tabText, activeTab === 'unpaid' && styles.activeTabText]}>
-                Chưa xử lý
+                Chưa thanh toán
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -158,25 +211,84 @@ const MyViolations = ({ navigation }) => {
               onPress={() => setActiveTab('paid')}
             >
               <Text style={[styles.tabText, activeTab === 'paid' && styles.activeTabText]}>
-                Đã xử lý / Đã nộp
+                Đã nộp phạt
               </Text>
             </TouchableOpacity>
           </View>
 
-          {loading ? (
+          {/* Search & Filter Bar */}
+          <View style={styles.searchFilterWrapper}>
+            <View style={styles.searchContainer}>
+              <Ionicons name="search" size={18} color="#94A3B8" style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Tìm kiếm lỗi hoặc thiết bị..."
+                placeholderTextColor="#94A3B8"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearSearchBtn}>
+                  <Ionicons name="close-circle" size={16} color="#94A3B8" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Horizontal scroll select Drone */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.filterChipScroll}
+              contentContainerStyle={styles.filterChipScrollContent}
+            >
+              <TouchableOpacity
+                style={[styles.filterChip, !filterDroneId && styles.filterChipActive]}
+                onPress={() => setFilterDroneId(null)}
+              >
+                <Text style={[styles.filterChipText, !filterDroneId && styles.filterChipTextActive]}>
+                  Tất cả UAV
+                </Text>
+              </TouchableOpacity>
+              {drones.map((d) => (
+                <TouchableOpacity
+                  key={d.id}
+                  style={[styles.filterChip, filterDroneId === d.id && styles.filterChipActive]}
+                  onPress={() => setFilterDroneId(d.id)}
+                >
+                  <Text style={[styles.filterChipText, filterDroneId === d.id && styles.filterChipTextActive]}>
+                    {d.model_name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
+          {loading && page === 1 ? (
             <View style={styles.loaderContainer}>
               <ActivityIndicator size="large" color="#0080FF" />
             </View>
           ) : (
             <FlatList
-              data={violations}
+              data={filteredViolations}
               keyExtractor={(item) => item.id.toString()}
               renderItem={renderViolationItem}
               contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}
+              onRefresh={handleRefresh}
+              refreshing={refreshing}
+              onEndReached={handleLoadMore}
+              onEndReachedThreshold={0.2}
+              ListFooterComponent={
+                loadingMore ? (
+                  <View style={{ paddingVertical: 12 }}>
+                    <ActivityIndicator color="#0080FF" />
+                  </View>
+                ) : null
+              }
               ListEmptyComponent={
                 <View style={styles.emptyContainer}>
-                  <Text style={styles.emptyText}>Tuyệt vời! Không có biên bản vi phạm nào.</Text>
+                  <Ionicons name="shield-checkmark-outline" size={48} color="#94A3B8" />
+                  <Text style={styles.emptyText}>Tuyệt vời! Không phát hiện biên bản vi phạm nào.</Text>
                 </View>
               }
             />
@@ -240,8 +352,64 @@ const styles = StyleSheet.create({
   activeTabText: {
     color: '#0080FF',
   },
+  searchFilterWrapper: {
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    paddingVertical: 12,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 10,
+    marginHorizontal: 16,
+    paddingHorizontal: 12,
+    height: 40,
+    marginBottom: 8,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    color: '#0F172A',
+    fontSize: 13,
+    padding: 0,
+  },
+  clearSearchBtn: {
+    padding: 4,
+  },
+  filterChipScroll: {
+    paddingLeft: 16,
+  },
+  filterChipScrollContent: {
+    paddingRight: 32,
+    gap: 8,
+  },
+  filterChip: {
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  filterChipActive: {
+    backgroundColor: '#E0F2FE',
+    borderColor: '#0080FF',
+  },
+  filterChipText: {
+    fontSize: 12,
+    color: '#475569',
+    fontWeight: '500',
+  },
+  filterChipTextActive: {
+    color: '#0080FF',
+    fontWeight: 'bold',
+  },
   loaderContainer: {
-    marginTop: 100,
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -276,10 +444,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: 'bold',
     marginLeft: 8,
+    flex: 1,
   },
   fineAmount: {
     fontSize: 15,
     fontWeight: 'bold',
+    marginLeft: 8,
   },
   divider: {
     height: 1,
@@ -306,33 +476,34 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
-  payBtn: {
-    backgroundColor: '#0080FF',
+  detailBtn: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderRadius: 10,
     marginTop: 14,
-    shadowColor: '#0080FF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 4,
+    gap: 6,
   },
-  payBtnText: {
-    color: '#FFFFFF',
+  detailBtnText: {
+    color: '#0080FF',
     fontSize: 13,
     fontWeight: 'bold',
-    marginLeft: 8,
   },
   emptyContainer: {
     alignItems: 'center',
-    marginTop: 80,
+    justifyContent: 'center',
+    marginTop: 100,
+    gap: 12,
   },
   emptyText: {
     color: '#64748B',
-    fontSize: 15,
+    fontSize: 14,
+    textAlign: 'center',
+    maxWidth: '80%',
   },
 });
 

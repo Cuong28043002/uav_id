@@ -230,20 +230,12 @@ const ViolationDetail = ({ route, navigation }) => {
             {isUnpaid && (
               <View style={{ marginTop: 10 }}>
                 {userRole === 'user' ? (
-                  <TouchableOpacity
-                    style={[styles.actionBtn, styles.payBtn]}
-                    onPress={handlePay}
-                    disabled={paying}
-                  >
-                    {paying ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
-                    ) : (
-                      <>
-                        <Ionicons name="card" size={20} color="#FFFFFF" />
-                        <Text style={styles.actionBtnText}>Nộp phạt trực tuyến qua Cổng DVC</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
+                  <View style={styles.policeInfoBox}>
+                    <Ionicons name="information-circle" size={22} color="#D97706" />
+                    <Text style={styles.policeInfoText}>
+                      Biên lai phạt vi phạm hành chính cần được hoàn thiện trực tiếp tại Cơ quan Quản lý Không lưu / Cảnh sát Hàng không khu vực. Trạng thái thanh toán của biên lai này sẽ được cơ quan chức năng cập nhật tự động sau khi hoàn tất thủ tục thu phạt.
+                    </Text>
+                  </View>
                 ) : (userRole === 'admin' || userRole === 'police') ? (
                   <TouchableOpacity
                     style={[styles.actionBtn, styles.payBtn]}
