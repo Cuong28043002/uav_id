@@ -10,6 +10,8 @@ import {
   StatusBar,
   ActivityIndicator,
   ImageBackground,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -26,6 +28,11 @@ const RegisterDrone = ({ navigation }) => {
   const [categories, setCategories] = useState([]);
   const [selectedMId, setSelectedMId] = useState(null);
   const [selectedCId, setSelectedCId] = useState(null);
+
+  const [mPickerVisible, setMPickerVisible] = useState(false);
+  const [cPickerVisible, setCPickerVisible] = useState(false);
+  const [mSearch, setMSearch] = useState('');
+  const [cSearch, setCSearch] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [initLoading, setInitLoading] = useState(true);
@@ -93,6 +100,15 @@ const RegisterDrone = ({ navigation }) => {
       </View>
     );
   }
+
+  const filteredMfrs = manufacturers.filter((m) =>
+    m.name.toLowerCase().includes(mSearch.toLowerCase()) ||
+    (m.country && m.country.toLowerCase().includes(mSearch.toLowerCase()))
+  );
+
+  const filteredCats = categories.filter((c) =>
+    c.name.toLowerCase().includes(cSearch.toLowerCase())
+  );
 
   return (
     <ImageBackground
@@ -199,75 +215,39 @@ const RegisterDrone = ({ navigation }) => {
                 <Text style={styles.sectionTitle}>Hãng & Phân loại</Text>
               </View>
 
-              <Text style={styles.inputLabel}>Chọn Nhà sản xuất *</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.horizontalScroll}
-                contentContainerStyle={{ paddingVertical: 4 }}
-              >
-                {manufacturers.map((item) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={[
-                      styles.chipItem,
-                      selectedMId === item.id && styles.chipItemActive,
-                    ]}
-                    onPress={() => setSelectedMId(item.id)}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons
-                      name="business-outline"
-                      size={14}
-                      color={selectedMId === item.id ? '#0080FF' : '#64748B'}
-                      style={{ marginRight: 4 }}
-                    />
-                    <Text
-                      style={[
-                        styles.chipItemText,
-                        selectedMId === item.id && styles.chipItemTextActive,
-                      ]}
-                    >
-                      {item.name} ({item.country})
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+              <View style={styles.inputWrapper}>
+                <Text style={styles.inputLabel}>Nhà sản xuất *</Text>
+                <TouchableOpacity
+                  style={styles.pickerField}
+                  activeOpacity={0.7}
+                  onPress={() => setMPickerVisible(true)}
+                >
+                  <Ionicons name="business-outline" size={18} color="#0080FF" style={styles.pickerFieldIcon} />
+                  <Text style={[styles.pickerFieldText, !selectedMId && styles.pickerFieldPlaceholder]}>
+                    {selectedMId
+                      ? manufacturers.find((m) => m.id === selectedMId)?.name
+                      : 'Chọn nhà sản xuất'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={18} color="#94A3B8" />
+                </TouchableOpacity>
+              </View>
 
-              <Text style={styles.inputLabel}>Chọn Phân loại UAV *</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.horizontalScroll}
-                contentContainerStyle={{ paddingVertical: 4 }}
-              >
-                {categories.map((item) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={[
-                      styles.chipItem,
-                      selectedCId === item.id && styles.chipItemActive,
-                    ]}
-                    onPress={() => setSelectedCId(item.id)}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons
-                      name="options-outline"
-                      size={14}
-                      color={selectedCId === item.id ? '#0080FF' : '#64748B'}
-                      style={{ marginRight: 4 }}
-                    />
-                    <Text
-                      style={[
-                        styles.chipItemText,
-                        selectedCId === item.id && styles.chipItemTextActive,
-                      ]}
-                    >
-                      {item.name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+              <View style={styles.inputWrapper}>
+                <Text style={styles.inputLabel}>Phân loại UAV *</Text>
+                <TouchableOpacity
+                  style={styles.pickerField}
+                  activeOpacity={0.7}
+                  onPress={() => setCPickerVisible(true)}
+                >
+                  <Ionicons name="options-outline" size={18} color="#0080FF" style={styles.pickerFieldIcon} />
+                  <Text style={[styles.pickerFieldText, !selectedCId && styles.pickerFieldPlaceholder]}>
+                    {selectedCId
+                      ? categories.find((c) => c.id === selectedCId)?.name
+                      : 'Chọn phân loại UAV'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={18} color="#94A3B8" />
+                </TouchableOpacity>
+              </View>
 
               <TouchableOpacity
                 style={styles.submitBtn}
@@ -291,6 +271,174 @@ const RegisterDrone = ({ navigation }) => {
           </ScrollView>
         </SafeAreaView>
       </LinearGradient>
+
+      {/* Picker Modals */}
+      <Modal
+        visible={mPickerVisible}
+        animationType="slide"
+        onRequestClose={() => {
+          setMPickerVisible(false);
+          setMSearch('');
+        }}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity
+              onPress={() => {
+                setMPickerVisible(false);
+                setMSearch('');
+              }}
+              style={styles.modalCloseBtn}
+            >
+              <Ionicons name="close" size={24} color="#0F172A" />
+            </TouchableOpacity>
+            <Text style={styles.modalHeaderTitle}>Chọn Nhà sản xuất</Text>
+            <View style={{ width: 40 }} />
+          </View>
+
+          <View style={styles.modalSearchContainer}>
+            <Ionicons name="search" size={20} color="#94A3B8" style={styles.modalSearchIcon} />
+            <TextInput
+              style={styles.modalSearchInput}
+              placeholder="Tìm kiếm nhà sản xuất..."
+              placeholderTextColor="#94A3B8"
+              value={mSearch}
+              onChangeText={setMSearch}
+            />
+            {mSearch.length > 0 && (
+              <TouchableOpacity onPress={() => setMSearch('')}>
+                <Ionicons name="close-circle" size={16} color="#94A3B8" />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <FlatList
+            data={filteredMfrs}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={({ item }) => {
+              const active = selectedMId === item.id;
+              return (
+                <TouchableOpacity
+                  style={[styles.modalItem, active && styles.modalItemActive]}
+                  onPress={() => {
+                    setSelectedMId(item.id);
+                    setMPickerVisible(false);
+                    setMSearch('');
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.modalItemLeft}>
+                    <Ionicons
+                      name="business"
+                      size={20}
+                      color={active ? '#0080FF' : '#64748B'}
+                      style={{ marginRight: 12 }}
+                    />
+                    <View>
+                      <Text style={[styles.modalItemText, active && styles.modalItemTextActive]}>
+                        {item.name}
+                      </Text>
+                      {item.country && (
+                        <Text style={styles.modalItemSubtext}>{item.country}</Text>
+                      )}
+                    </View>
+                  </View>
+                  {active && (
+                    <Ionicons name="checkmark-circle" size={20} color="#0080FF" />
+                  )}
+                </TouchableOpacity>
+              );
+            }}
+            contentContainerStyle={styles.modalListContent}
+            ListEmptyComponent={
+              <View style={styles.modalEmptyContainer}>
+                <Text style={styles.modalEmptyText}>Không tìm thấy nhà sản xuất nào</Text>
+              </View>
+            }
+          />
+        </SafeAreaView>
+      </Modal>
+
+      <Modal
+        visible={cPickerVisible}
+        animationType="slide"
+        onRequestClose={() => {
+          setCPickerVisible(false);
+          setCSearch('');
+        }}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity
+              onPress={() => {
+                setCPickerVisible(false);
+                setCSearch('');
+              }}
+              style={styles.modalCloseBtn}
+            >
+              <Ionicons name="close" size={24} color="#0F172A" />
+            </TouchableOpacity>
+            <Text style={styles.modalHeaderTitle}>Chọn Phân loại UAV</Text>
+            <View style={{ width: 40 }} />
+          </View>
+
+          <View style={styles.modalSearchContainer}>
+            <Ionicons name="search" size={20} color="#94A3B8" style={styles.modalSearchIcon} />
+            <TextInput
+              style={styles.modalSearchInput}
+              placeholder="Tìm kiếm phân loại..."
+              placeholderTextColor="#94A3B8"
+              value={cSearch}
+              onChangeText={setCSearch}
+            />
+            {cSearch.length > 0 && (
+              <TouchableOpacity onPress={() => setCSearch('')}>
+                <Ionicons name="close-circle" size={16} color="#94A3B8" />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <FlatList
+            data={filteredCats}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={({ item }) => {
+              const active = selectedCId === item.id;
+              return (
+                <TouchableOpacity
+                  style={[styles.modalItem, active && styles.modalItemActive]}
+                  onPress={() => {
+                    setSelectedCId(item.id);
+                    setCPickerVisible(false);
+                    setCSearch('');
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.modalItemLeft}>
+                    <Ionicons
+                      name="options"
+                      size={20}
+                      color={active ? '#0080FF' : '#64748B'}
+                      style={{ marginRight: 12 }}
+                    />
+                    <Text style={[styles.modalItemText, active && styles.modalItemTextActive]}>
+                      {item.name}
+                    </Text>
+                  </View>
+                  {active && (
+                    <Ionicons name="checkmark-circle" size={20} color="#0080FF" />
+                  )}
+                </TouchableOpacity>
+              );
+            }}
+            contentContainerStyle={styles.modalListContent}
+            ListEmptyComponent={
+              <View style={styles.modalEmptyContainer}>
+                <Text style={styles.modalEmptyText}>Không tìm thấy phân loại nào</Text>
+              </View>
+            }
+          />
+        </SafeAreaView>
+      </Modal>
     </ImageBackground>
   );
 };
@@ -424,33 +572,117 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
   },
-  horizontalScroll: {
-    marginBottom: 16,
-    paddingBottom: 4,
-  },
-  chipItem: {
+  pickerField: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    borderRadius: 10,
+    height: 48,
+    paddingHorizontal: 12,
+  },
+  pickerFieldIcon: {
     marginRight: 8,
   },
-  chipItemActive: {
-    backgroundColor: '#E0F2FE',
+  pickerFieldText: {
+    flex: 1,
+    color: '#0F172A',
+    fontSize: 14,
+  },
+  pickerFieldPlaceholder: {
+    color: '#94A3B8',
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
+  },
+  modalCloseBtn: {
+    padding: 4,
+  },
+  modalHeaderTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#0F172A',
+  },
+  modalSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    margin: 16,
+    paddingHorizontal: 12,
+    height: 44,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  modalSearchIcon: {
+    marginRight: 8,
+  },
+  modalSearchInput: {
+    flex: 1,
+    color: '#0F172A',
+    fontSize: 14,
+    height: '100%',
+    padding: 0,
+  },
+  modalListContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+  },
+  modalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  modalItemActive: {
     borderColor: '#0080FF',
+    backgroundColor: '#F0F9FF',
   },
-  chipItemText: {
-    color: '#475569',
-    fontSize: 13,
+  modalItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  modalItemText: {
+    fontSize: 14,
     fontWeight: '500',
+    color: '#0F172A',
   },
-  chipItemTextActive: {
+  modalItemTextActive: {
     color: '#0080FF',
     fontWeight: 'bold',
+  },
+  modalItemSubtext: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  modalEmptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  modalEmptyText: {
+    color: '#64748B',
+    fontSize: 14,
   },
   submitBtn: {
     borderRadius: 10,

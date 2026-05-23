@@ -10,6 +10,8 @@ import {
   StatusBar,
   ActivityIndicator,
   ImageBackground,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -33,6 +35,11 @@ const RequestFlight = ({ navigation }) => {
   // Picker States
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerTarget, setPickerTarget] = useState('start');
+
+  const [dronePickerVisible, setDronePickerVisible] = useState(false);
+  const [zonePickerVisible, setZonePickerVisible] = useState(false);
+  const [droneSearch, setDroneSearch] = useState('');
+  const [zoneSearch, setZoneSearch] = useState('');
 
   useEffect(() => {
     const fetchMetadata = async () => {
@@ -111,6 +118,16 @@ const RequestFlight = ({ navigation }) => {
     );
   }
 
+  const filteredDrones = drones.filter((d) =>
+    d.model_name.toLowerCase().includes(droneSearch.toLowerCase()) ||
+    (d.serial_number && d.serial_number.toLowerCase().includes(droneSearch.toLowerCase()))
+  );
+
+  const filteredZones = zones.filter((z) =>
+    z.name.toLowerCase().includes(zoneSearch.toLowerCase()) ||
+    (z.zone_type && z.zone_type.toLowerCase().includes(zoneSearch.toLowerCase()))
+  );
+
   return (
     <ImageBackground
       source={require('../../../assets/light_bg.png')}
@@ -156,39 +173,21 @@ const RequestFlight = ({ navigation }) => {
                   Không tìm thấy UAV nào đã được duyệt định danh. Vui lòng đăng ký định danh thiết bị trước khi nộp đơn xin phép bay.
                 </Text>
               ) : (
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.horizontalScroll}
-                  contentContainerStyle={{ paddingVertical: 4 }}
-                >
-                  {drones.map((item) => (
-                    <TouchableOpacity
-                      key={item.id}
-                      style={[
-                        styles.chipItem,
-                        selectedDroneId === item.id && styles.chipItemActive,
-                      ]}
-                      onPress={() => setSelectedDroneId(item.id)}
-                      activeOpacity={0.7}
-                    >
-                      <Ionicons
-                        name="airplane"
-                        size={14}
-                        color={selectedDroneId === item.id ? '#0080FF' : '#64748B'}
-                        style={{ marginRight: 6 }}
-                      />
-                      <Text
-                        style={[
-                          styles.chipItemText,
-                          selectedDroneId === item.id && styles.chipItemTextActive,
-                        ]}
-                      >
-                        {item.model_name} (S/N: {item.serial_number})
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
+                <View style={styles.inputWrapper}>
+                  <TouchableOpacity
+                    style={styles.pickerField}
+                    activeOpacity={0.7}
+                    onPress={() => setDronePickerVisible(true)}
+                  >
+                    <Ionicons name="airplane-outline" size={18} color="#0080FF" style={styles.pickerFieldIcon} />
+                    <Text style={[styles.pickerFieldText, !selectedDroneId && styles.pickerFieldPlaceholder]}>
+                      {selectedDroneId
+                        ? drones.find((d) => d.id === selectedDroneId)?.model_name
+                        : 'Chọn thiết bị UAV'}
+                    </Text>
+                    <Ionicons name="chevron-down" size={18} color="#94A3B8" />
+                  </TouchableOpacity>
+                </View>
               )}
 
               {/* Section 2: Vùng hoạt động */}
@@ -197,45 +196,21 @@ const RequestFlight = ({ navigation }) => {
                 <Text style={styles.sectionTitle}>Khu vực bay đăng ký *</Text>
               </View>
 
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.horizontalScroll}
-                contentContainerStyle={{ paddingVertical: 4 }}
-              >
-                {zones.map((item) => {
-                  const isForbidden = item.zone_type === 'forbidden';
-                  const isRestricted = item.zone_type === 'restricted';
-                  const zoneColor = isForbidden ? '#EF4444' : isRestricted ? '#F59E0B' : '#10B981';
-                  
-                  return (
-                    <TouchableOpacity
-                      key={item.id}
-                      style={[
-                        styles.chipItem,
-                        selectedZoneId === item.id && styles.chipItemActive,
-                      ]}
-                      onPress={() => setSelectedZoneId(item.id)}
-                      activeOpacity={0.7}
-                    >
-                      <Ionicons
-                        name="navigate-circle-outline"
-                        size={14}
-                        color={selectedZoneId === item.id ? '#0080FF' : zoneColor}
-                        style={{ marginRight: 6 }}
-                      />
-                      <Text
-                        style={[
-                          styles.chipItemText,
-                          selectedZoneId === item.id && styles.chipItemTextActive,
-                        ]}
-                      >
-                        {item.name} <Text style={{ color: selectedZoneId === item.id ? '#0080FF' : zoneColor, fontWeight: 'bold' }}>({item.zone_type.toUpperCase()})</Text>
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
+              <View style={styles.inputWrapper}>
+                <TouchableOpacity
+                  style={styles.pickerField}
+                  activeOpacity={0.7}
+                  onPress={() => setZonePickerVisible(true)}
+                >
+                  <Ionicons name="location-outline" size={18} color="#0080FF" style={styles.pickerFieldIcon} />
+                  <Text style={[styles.pickerFieldText, !selectedZoneId && styles.pickerFieldPlaceholder]}>
+                    {selectedZoneId
+                      ? zones.find((z) => z.id === selectedZoneId)?.name
+                      : 'Chọn khu vực bay'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={18} color="#94A3B8" />
+                </TouchableOpacity>
+              </View>
 
               {/* Section 3: Lịch trình & mục đích */}
               <View style={[styles.sectionHeaderRow, { marginTop: 12 }]}>
@@ -328,6 +303,181 @@ const RequestFlight = ({ navigation }) => {
           />
         </SafeAreaView>
       </LinearGradient>
+
+      {/* Selection Modals */}
+      <Modal
+        visible={dronePickerVisible}
+        animationType="slide"
+        onRequestClose={() => {
+          setDronePickerVisible(false);
+          setDroneSearch('');
+        }}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity
+              onPress={() => {
+                setDronePickerVisible(false);
+                setDroneSearch('');
+              }}
+              style={styles.modalCloseBtn}
+            >
+              <Ionicons name="close" size={24} color="#0F172A" />
+            </TouchableOpacity>
+            <Text style={styles.modalHeaderTitle}>Chọn Thiết bị UAV</Text>
+            <View style={{ width: 40 }} />
+          </View>
+
+          <View style={styles.modalSearchContainer}>
+            <Ionicons name="search" size={20} color="#94A3B8" style={styles.modalSearchIcon} />
+            <TextInput
+              style={styles.modalSearchInput}
+              placeholder="Tìm kiếm thiết bị..."
+              placeholderTextColor="#94A3B8"
+              value={droneSearch}
+              onChangeText={setDroneSearch}
+            />
+            {droneSearch.length > 0 && (
+              <TouchableOpacity onPress={() => setDroneSearch('')}>
+                <Ionicons name="close-circle" size={16} color="#94A3B8" />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <FlatList
+            data={filteredDrones}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={({ item }) => {
+              const active = selectedDroneId === item.id;
+              return (
+                <TouchableOpacity
+                  style={[styles.modalItem, active && styles.modalItemActive]}
+                  onPress={() => {
+                    setSelectedDroneId(item.id);
+                    setDronePickerVisible(false);
+                    setDroneSearch('');
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.modalItemLeft}>
+                    <Ionicons
+                      name="airplane"
+                      size={20}
+                      color={active ? '#0080FF' : '#64748B'}
+                      style={{ marginRight: 12 }}
+                    />
+                    <View>
+                      <Text style={[styles.modalItemText, active && styles.modalItemTextActive]}>
+                        {item.model_name}
+                      </Text>
+                      <Text style={styles.modalItemSubtext}>S/N: {item.serial_number}</Text>
+                    </View>
+                  </View>
+                  {active && (
+                    <Ionicons name="checkmark-circle" size={20} color="#0080FF" />
+                  )}
+                </TouchableOpacity>
+              );
+            }}
+            contentContainerStyle={styles.modalListContent}
+            ListEmptyComponent={
+              <View style={styles.modalEmptyContainer}>
+                <Text style={styles.modalEmptyText}>Không tìm thấy thiết bị nào</Text>
+              </View>
+            }
+          />
+        </SafeAreaView>
+      </Modal>
+
+      <Modal
+        visible={zonePickerVisible}
+        animationType="slide"
+        onRequestClose={() => {
+          setZonePickerVisible(false);
+          setZoneSearch('');
+        }}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity
+              onPress={() => {
+                setZonePickerVisible(false);
+                setZoneSearch('');
+              }}
+              style={styles.modalCloseBtn}
+            >
+              <Ionicons name="close" size={24} color="#0F172A" />
+            </TouchableOpacity>
+            <Text style={styles.modalHeaderTitle}>Chọn Khu vực bay</Text>
+            <View style={{ width: 40 }} />
+          </View>
+
+          <View style={styles.modalSearchContainer}>
+            <Ionicons name="search" size={20} color="#94A3B8" style={styles.modalSearchIcon} />
+            <TextInput
+              style={styles.modalSearchInput}
+              placeholder="Tìm kiếm khu vực..."
+              placeholderTextColor="#94A3B8"
+              value={zoneSearch}
+              onChangeText={setZoneSearch}
+            />
+            {zoneSearch.length > 0 && (
+              <TouchableOpacity onPress={() => setZoneSearch('')}>
+                <Ionicons name="close-circle" size={16} color="#94A3B8" />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <FlatList
+            data={filteredZones}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={({ item }) => {
+              const active = selectedZoneId === item.id;
+              const isForbidden = item.zone_type === 'forbidden';
+              const isRestricted = item.zone_type === 'restricted';
+              const zoneColor = isForbidden ? '#EF4444' : isRestricted ? '#F59E0B' : '#10B981';
+
+              return (
+                <TouchableOpacity
+                  style={[styles.modalItem, active && styles.modalItemActive]}
+                  onPress={() => {
+                    setSelectedZoneId(item.id);
+                    setZonePickerVisible(false);
+                    setZoneSearch('');
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.modalItemLeft}>
+                    <Ionicons
+                      name="navigate-circle-outline"
+                      size={20}
+                      color={active ? '#0080FF' : zoneColor}
+                      style={{ marginRight: 12 }}
+                    />
+                    <View>
+                      <Text style={[styles.modalItemText, active && styles.modalItemTextActive]}>
+                        {item.name}
+                      </Text>
+                      <Text style={[styles.modalItemSubtext, { color: zoneColor, fontWeight: 'bold' }]}>
+                        {item.zone_type.toUpperCase()}
+                      </Text>
+                    </View>
+                  </View>
+                  {active && (
+                    <Ionicons name="checkmark-circle" size={20} color="#0080FF" />
+                  )}
+                </TouchableOpacity>
+              );
+            }}
+            contentContainerStyle={styles.modalListContent}
+            ListEmptyComponent={
+              <View style={styles.modalEmptyContainer}>
+                <Text style={styles.modalEmptyText}>Không tìm thấy khu vực bay nào</Text>
+              </View>
+            }
+          />
+        </SafeAreaView>
+      </Modal>
     </ImageBackground>
   );
 };
@@ -440,33 +590,117 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#FEE2E2',
   },
-  horizontalScroll: {
-    marginBottom: 16,
-    paddingBottom: 4,
-  },
-  chipItem: {
+  pickerField: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    borderRadius: 10,
+    height: 48,
+    paddingHorizontal: 12,
+  },
+  pickerFieldIcon: {
     marginRight: 8,
   },
-  chipItemActive: {
-    backgroundColor: '#E0F2FE',
+  pickerFieldText: {
+    flex: 1,
+    color: '#0F172A',
+    fontSize: 14,
+  },
+  pickerFieldPlaceholder: {
+    color: '#94A3B8',
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
+  },
+  modalCloseBtn: {
+    padding: 4,
+  },
+  modalHeaderTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#0F172A',
+  },
+  modalSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    margin: 16,
+    paddingHorizontal: 12,
+    height: 44,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  modalSearchIcon: {
+    marginRight: 8,
+  },
+  modalSearchInput: {
+    flex: 1,
+    color: '#0F172A',
+    fontSize: 14,
+    height: '100%',
+    padding: 0,
+  },
+  modalListContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+  },
+  modalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  modalItemActive: {
     borderColor: '#0080FF',
+    backgroundColor: '#F0F9FF',
   },
-  chipItemText: {
-    color: '#475569',
-    fontSize: 13,
+  modalItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  modalItemText: {
+    fontSize: 14,
     fontWeight: '500',
+    color: '#0F172A',
   },
-  chipItemTextActive: {
+  modalItemTextActive: {
     color: '#0080FF',
     fontWeight: 'bold',
+  },
+  modalItemSubtext: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  modalEmptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  modalEmptyText: {
+    color: '#64748B',
+    fontSize: 14,
   },
   inputWrapper: {
     marginBottom: 16,
