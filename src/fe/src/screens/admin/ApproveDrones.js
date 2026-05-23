@@ -367,9 +367,20 @@ const ApproveDrones = ({ navigation }) => {
       });
 
       if (response.data?.success) {
-        Alert.alert('Thành công', `Thiết bị đã được cấp biển số định danh quốc gia: ${finalPlate}!`);
-        setModalVisible(false);
-        fetchRegistrations();
+        Alert.alert(
+          'Thành công',
+          `Thiết bị đã được cấp biển số định danh quốc gia: ${finalPlate}!`,
+          [
+            {
+              text: 'Xem chi tiết UAV',
+              onPress: () => {
+                setModalVisible(false);
+                fetchRegistrations();
+                navigation.navigate('DroneDetail', { droneId: selectedReg.drone_id });
+              }
+            }
+          ]
+        );
       }
     } catch (error) {
       Alert.alert('Lỗi', error.response?.data?.message || 'Phê duyệt thất bại.');
@@ -957,35 +968,58 @@ const ApproveDrones = ({ navigation }) => {
 
                         {/* Image Gallery */}
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.galleryScroll}>
-                          {selectedReg.documents && selectedReg.documents.length > 0 ? (
-                            selectedReg.documents.map((img, idx) => (
-                              <View key={idx} style={styles.galleryCard}>
-                                <Image source={{ uri: img }} style={styles.galleryImg} />
-                                <Text style={styles.galleryText}>Ảnh đính kèm {idx + 1}</Text>
-                              </View>
-                            ))
-                          ) : (
-                            <>
-                              <View style={styles.galleryCard}>
-                                <View style={[styles.galleryPlaceholder, { backgroundColor: '#EFF6FF' }]}>
-                                  <Ionicons name="airplane" size={32} color="#0080FF" />
+                          {(() => {
+                            let docList = [];
+                            if (selectedReg.documents) {
+                              if (Array.isArray(selectedReg.documents)) {
+                                docList = selectedReg.documents;
+                              } else if (typeof selectedReg.documents === 'string') {
+                                try {
+                                  const parsed = JSON.parse(selectedReg.documents);
+                                  if (Array.isArray(parsed)) {
+                                    docList = parsed;
+                                  } else {
+                                    docList = [selectedReg.documents];
+                                  }
+                                } catch (e) {
+                                  if (selectedReg.documents.trim().startsWith('http') || selectedReg.documents.trim().startsWith('file:')) {
+                                    docList = [selectedReg.documents.trim()];
+                                  }
+                                }
+                              }
+                            }
+                            if (docList.length > 0) {
+                              return docList.map((img, idx) => (
+                                <View key={idx} style={styles.galleryCard}>
+                                  <Image source={{ uri: img }} style={styles.galleryImg} />
+                                  <Text style={styles.galleryText}>Ảnh đính kèm {idx + 1}</Text>
                                 </View>
-                                <Text style={styles.galleryText}>Góc nghiêng 45°</Text>
-                              </View>
-                              <View style={styles.galleryCard}>
-                                <View style={[styles.galleryPlaceholder, { backgroundColor: '#F0FDF4' }]}>
-                                  <Ionicons name="barcode-outline" size={32} color="#10B981" />
-                                </View>
-                                <Text style={styles.galleryText}>Tem nhãn S/N</Text>
-                              </View>
-                              <View style={styles.galleryCard}>
-                                <View style={[styles.galleryPlaceholder, { backgroundColor: '#FFF7ED' }]}>
-                                  <Ionicons name="card-outline" size={32} color="#F97316" />
-                                </View>
-                                <Text style={styles.galleryText}>Đơn đề nghị cấp</Text>
-                              </View>
-                            </>
-                          )}
+                              ));
+                            } else {
+                              return (
+                                <>
+                                  <View style={styles.galleryCard}>
+                                    <View style={[styles.galleryPlaceholder, { backgroundColor: '#EFF6FF' }]}>
+                                      <Ionicons name="airplane" size={32} color="#0080FF" />
+                                    </View>
+                                    <Text style={styles.galleryText}>Góc nghiêng 45°</Text>
+                                  </View>
+                                  <View style={styles.galleryCard}>
+                                    <View style={[styles.galleryPlaceholder, { backgroundColor: '#F0FDF4' }]}>
+                                      <Ionicons name="barcode-outline" size={32} color="#10B981" />
+                                    </View>
+                                    <Text style={styles.galleryText}>Tem nhãn S/N</Text>
+                                  </View>
+                                  <View style={styles.galleryCard}>
+                                    <View style={[styles.galleryPlaceholder, { backgroundColor: '#FFF7ED' }]}>
+                                      <Ionicons name="card-outline" size={32} color="#F97316" />
+                                    </View>
+                                    <Text style={styles.galleryText}>Đơn đề nghị cấp</Text>
+                                  </View>
+                                </>
+                              );
+                            }
+                          })()}
                         </ScrollView>
                       </View>
                     )}

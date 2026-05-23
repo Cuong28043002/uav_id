@@ -49,9 +49,19 @@ const RequestFlight = ({ navigation }) => {
           axiosClient.get('/flight/zones'),
         ]);
 
+        const getActiveReg = (regs) => {
+          if (!regs || regs.length === 0) return null;
+          const approved = regs.find((r) => r.status === 'approved');
+          if (approved) return approved;
+          const pending = regs.find((r) => r.status === 'pending');
+          if (pending) return pending;
+          const sorted = [...regs].sort((a, b) => b.id - a.id);
+          return sorted[0];
+        };
+
         const approvedDrones = (dronesRes.data?.data || []).filter(
           (d) => {
-            const reg = d.registrations && d.registrations[0];
+            const reg = getActiveReg(d.registrations);
             return reg?.status === 'approved';
           }
         );
@@ -85,8 +95,25 @@ const RequestFlight = ({ navigation }) => {
       });
 
       if (response.data?.success) {
+        const newPermitId = response.data.data?.id;
         Alert.alert('Thành công', 'Hồ sơ xin cấp phép bay đã được gửi thành công!', [
-          { text: 'OK', onPress: () => navigation.goBack() }
+          {
+            text: 'OK',
+            onPress: () => {
+              // Reset form inputs
+              setSelectedDroneId(null);
+              setSelectedZoneId(null);
+              setStartTime('');
+              setEndTime('');
+              setPurpose('');
+              
+              if (newPermitId) {
+                navigation.navigate('FlightPermitDetail', { permitId: newPermitId });
+              } else {
+                navigation.goBack();
+              }
+            }
+          }
         ]);
       } else {
         Alert.alert('Lỗi', 'Không thể gửi đơn cấp phép bay.');

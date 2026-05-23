@@ -169,10 +169,20 @@ const MyDrones = ({ navigation }) => {
     }
   };
 
+  const getActiveReg = (regs) => {
+    if (!regs || regs.length === 0) return null;
+    const approved = regs.find((r) => r.status === 'approved');
+    if (approved) return approved;
+    const pending = regs.find((r) => r.status === 'pending');
+    if (pending) return pending;
+    const sorted = [...regs].sort((a, b) => b.id - a.id);
+    return sorted[0];
+  };
+
   const getFilteredDrones = () => {
     if (selectedStatus === 'all') return drones;
     return drones.filter((item) => {
-      const reg = item.registrations && item.registrations[0];
+      const reg = getActiveReg(item.registrations);
       const status = reg?.status || 'none';
       if (selectedStatus === 'approved') return status === 'approved';
       if (selectedStatus === 'pending') return status === 'pending';
@@ -183,7 +193,7 @@ const MyDrones = ({ navigation }) => {
 
   const renderDroneItem = ({ item }) => {
     const isExpanded = expandedId === item.id;
-    const reg = item.registrations && item.registrations[0];
+    const reg = getActiveReg(item.registrations);
     const qrBase64 = qrCodes[item.id];
     const isQrLoading = qrLoading[item.id];
 

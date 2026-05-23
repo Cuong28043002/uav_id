@@ -32,6 +32,18 @@ const DroneDetail = ({ route, navigation }) => {
   const [violations, setViolations] = useState([]);
   const [activeTab, setActiveTab] = useState('info'); // 'info' | 'logs' | 'violations'
 
+  const getActiveReg = (regs) => {
+    if (!regs || regs.length === 0) return null;
+    const approved = regs.find((r) => r.status === 'approved');
+    if (approved) return approved;
+    const pending = regs.find((r) => r.status === 'pending');
+    if (pending) return pending;
+    const sorted = [...regs].sort((a, b) => b.id - a.id);
+    return sorted[0];
+  };
+
+  const activeReg = getActiveReg(drone?.registrations);
+
   const renderSignature = (registration) => {
     if (!registration || !registration.signature) return null;
     const sigStr = registration.signature;
@@ -230,10 +242,10 @@ const DroneDetail = ({ route, navigation }) => {
               <Text style={styles.modelName}>{drone.model_name}</Text>
               <Text style={styles.serialNumber}>S/N: {drone.serial_number}</Text>
               
-              {drone.registrations && drone.registrations.length > 0 && (
+              {activeReg && (
                 <View style={styles.idCodeContainer}>
                   <Text style={styles.idCodeLabel}>MÃ SỐ ĐỊNH DANH QUỐC GIA</Text>
-                  <Text style={styles.idCode}>{drone.registrations[0].identification_code}</Text>
+                  <Text style={styles.idCode}>{activeReg.identification_code}</Text>
                 </View>
               )}
             </View>
@@ -268,7 +280,7 @@ const DroneDetail = ({ route, navigation }) => {
             {activeTab === 'info' && (
               <View style={styles.tabContent}>
                 {/* CERTIFICATE / REGISTRATION CARD */}
-                {drone.registrations && drone.registrations.length > 0 && drone.registrations[0].status === 'approved' && (
+                {activeReg && activeReg.status === 'approved' && (
                   <View style={styles.infoCard}>
                     <Text style={styles.infoCardTitle}>Chứng nhận Đăng ký Định danh UAV</Text>
                     <Text style={styles.infoSubtitle}>CẤP BỞI BỘ CÔNG AN - CỤC HÀNG KHÔNG VIỆT NAM</Text>
@@ -277,7 +289,7 @@ const DroneDetail = ({ route, navigation }) => {
                       <LinearGradient colors={['#004B87', '#003366']} style={styles.plateBody}>
                         <View style={styles.plateBorder}>
                           <Text style={styles.plateHeaderText}>UAV ID NATIONAL REGISTRATION</Text>
-                          <Text style={styles.plateNumber}>{drone.registrations[0].identification_code}</Text>
+                          <Text style={styles.plateNumber}>{activeReg.identification_code}</Text>
                           <Text style={styles.plateFooterText}>BẢO ĐẢM AN NINH HÀNG KHÔNG QUỐC GIA</Text>
                         </View>
                       </LinearGradient>
@@ -286,11 +298,11 @@ const DroneDetail = ({ route, navigation }) => {
                     <View style={styles.infoRow}>
                       <Text style={styles.infoLabel}>Ngày cấp biển:</Text>
                       <Text style={styles.infoValue}>
-                        {new Date(drone.registrations[0].issue_date || drone.registrations[0].updatedAt).toLocaleDateString('vi-VN')}
+                        {new Date(activeReg.issue_date || activeReg.updatedAt).toLocaleDateString('vi-VN')}
                       </Text>
                     </View>
 
-                    {renderSignature(drone.registrations[0])}
+                    {renderSignature(activeReg)}
                   </View>
                 )}
 

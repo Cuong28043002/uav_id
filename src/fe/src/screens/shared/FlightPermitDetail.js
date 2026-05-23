@@ -27,6 +27,20 @@ const FlightPermitDetail = ({ route, navigation }) => {
   const [actionLoading, setActionLoading] = useState(false);
   const [reviewNote, setReviewNote] = useState('');
 
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      if (userRole === 'admin') {
+        navigation.navigate('AdminHome');
+      } else if (userRole === 'police') {
+        navigation.navigate('PoliceHome');
+      } else {
+        navigation.navigate('UserHome');
+      }
+    }
+  };
+
   const fetchPermit = async () => {
     setLoading(true);
     try {
@@ -111,7 +125,7 @@ const FlightPermitDetail = ({ route, navigation }) => {
           <SafeAreaView style={styles.centerContainer}>
             <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
             <Text style={styles.errorText}>Hồ sơ cấp phép bay không tồn tại.</Text>
-            <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <TouchableOpacity style={styles.backBtn} onPress={handleBack}>
               <Text style={styles.backBtnText}>Quay lại</Text>
             </TouchableOpacity>
           </SafeAreaView>
@@ -142,7 +156,7 @@ const FlightPermitDetail = ({ route, navigation }) => {
           <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
           
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <TouchableOpacity onPress={handleBack} style={styles.backButton}>
               <Ionicons name="arrow-back" size={24} color="#0F172A" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Hồ Sơ Cấp Phép Bay</Text>
