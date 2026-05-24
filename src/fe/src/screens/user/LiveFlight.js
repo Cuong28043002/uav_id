@@ -504,7 +504,7 @@ const LiveFlight = ({ navigation }) => {
                       colors={['#EF4444', '#DC2626']}
                       style={styles.landBtnGradient}
                     >
-                      <Ionicons name="airplane-landing" size={22} color="#FFFFFF" />
+                      <Ionicons name="arrow-down-circle" size={22} color="#FFFFFF" />
                       <Text style={styles.landBtnText}>HẠ CÁNH & ĐỒNG BỘ NHẬT KÝ BAY</Text>
                     </LinearGradient>
                   )}

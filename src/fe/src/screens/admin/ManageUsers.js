@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   SafeAreaView,
   StatusBar,
-  Alert,
   ImageBackground,
   Modal,
   Dimensions,
@@ -18,6 +17,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import axiosClient from '../../api/axiosClient';
+import Alert from '../../components/CustomAlert';
 
 const { width, height } = Dimensions.get('window');
 

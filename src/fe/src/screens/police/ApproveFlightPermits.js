@@ -106,6 +106,11 @@ const ApproveFlightPermits = ({ navigation }) => {
         <SafeAreaView style={styles.container}>
           <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
           <View style={styles.header}>
+            {navigation.canGoBack() && (
+              <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                <Ionicons name="arrow-back" size={24} color="#0F172A" />
+              </TouchableOpacity>
+            )}
             <Text style={styles.headerTitle}>Duyệt Cấp Phép Chuyến Bay</Text>
           </View>
 
@@ -171,11 +176,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
     backgroundColor: '#FFFFFF',
+  },
+  backButton: {
+    padding: 8,
+    marginRight: 16,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 8,
   },
   headerTitle: {
     color: '#0F172A',

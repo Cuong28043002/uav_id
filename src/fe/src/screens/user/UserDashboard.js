@@ -184,13 +184,18 @@ const UserDashboard = ({ navigation }) => {
                     <Text style={styles.statLabel}>Giấy phép đã yêu cầu</Text>
                   </View>
 
-                  <View style={[styles.statCard, { width: '100%' }]}>
+
+                  <TouchableOpacity
+                    style={[styles.statCard, { width: '100%' }]}
+                    activeOpacity={0.8}
+                    onPress={() => navigation.navigate('MyViolations')}
+                  >
                     <View style={styles.statHeader}>
-                      <Ionicons name="warning" size={24} color="#0080FF" />
-                      <Text style={styles.statNumber}>{counts.violations}</Text>
+                      <Ionicons name="warning" size={24} color={counts.violations > 0 ? '#EF4444' : '#0080FF'} />
+                      <Text style={[styles.statNumber, counts.violations > 0 && { color: '#EF4444' }]}>{counts.violations}</Text>
                     </View>
                     <Text style={styles.statLabel}>Biên bản vi phạm chưa xử lý (Nhấp để nộp phạt)</Text>
-                  </View>
+                  </TouchableOpacity>
                 </View>
 
                 {/* KHỐI 3: CHECKLIST CHUẨN BỊ TRƯỚC KHI CẤT CÁNH (PRE-FLIGHT) */}

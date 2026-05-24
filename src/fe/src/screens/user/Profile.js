@@ -9,7 +9,6 @@ import {
   SafeAreaView,
   StatusBar,
   ActivityIndicator,
-  Alert,
   ImageBackground,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -17,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import axiosClient from '../../api/axiosClient';
 import { useAuth } from '../../navigation/AppNavigator';
+import Alert from '../../components/CustomAlert';
 
 const Profile = ({ navigation }) => {
   const auth = useAuth();
@@ -496,7 +496,14 @@ const Profile = ({ navigation }) => {
                   <TouchableOpacity
                     style={styles.menuHeader}
                     onPress={() => {
-                      navigation.navigate('SystemSettings');
+                      if (isAdmin) {
+                        navigation.navigate('SystemSettings');
+                      } else {
+                        Alert.alert(
+                          'Liên hệ hỗ trợ',
+                          'Email hỗ trợ: support@uavid.vn\nĐường dây nóng: 1800-6868\nGiờ làm việc: 8:00 - 17:30 (Thứ 2 - Thứ 6)'
+                        );
+                      }
                     }}
                   >
                     <View style={styles.menuTitleRow}>
