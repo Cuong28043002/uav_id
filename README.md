@@ -135,7 +135,7 @@ uav_id/
 3. Cấu hình địa chỉ IP backend trong file `src/fe/src/api/client.js` (hoặc cấu hình tương đương) để trỏ về IP của máy tính chạy server (không dùng `localhost` khi test trên thiết bị thật).
 4. Khởi chạy ứng dụng Expo:
    ```bash
-   npm start
+   npx expo start
    ```
 5. Sử dụng ứng dụng **Expo Go** trên điện thoại di động (iOS hoặc Android) để quét mã QR được hiển thị trên terminal để trải nghiệm ứng dụng trực tiếp.
 
