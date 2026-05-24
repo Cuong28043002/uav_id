@@ -1,5 +1,5 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
-import { ActivityIndicator, View, StyleSheet, Alert as RNAlert } from 'react-native';
+import { ActivityIndicator, View, StyleSheet, Alert as RNAlert, DeviceEventEmitter } from 'react-native';
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -67,6 +67,14 @@ const AppNavigator = () => {
 
   useEffect(() => {
     checkAuth();
+  }, []);
+
+  // Auto-logout when token expires (401 from axiosClient)
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('AUTH_UNAUTHORIZED', async () => {
+      setUserRole(null);
+    });
+    return () => sub.remove();
   }, []);
 
   if (isLoading) {

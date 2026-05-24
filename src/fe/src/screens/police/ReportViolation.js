@@ -9,13 +9,13 @@ import {
   SafeAreaView,
   StatusBar,
   ActivityIndicator,
-  Alert,
   ImageBackground,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import axiosClient from '../../api/axiosClient';
+import Alert from '../../components/CustomAlert';
 import DateTimePickerModal from '../../components/DateTimePickerModal';
 
 const ReportViolation = ({ route, navigation }) => {

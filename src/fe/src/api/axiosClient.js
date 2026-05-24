@@ -1,5 +1,6 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DeviceEventEmitter } from 'react-native';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.20:5000/api';
 
@@ -39,6 +40,8 @@ axiosClient.interceptors.response.use(
       originalRequest._retry = true;
       try {
         await AsyncStorage.multiRemove(['token', 'user']);
+        // Trigger auto-logout across the app
+        DeviceEventEmitter.emit('AUTH_UNAUTHORIZED');
       } catch (storageError) {
         console.error(storageError);
       }
@@ -48,3 +51,4 @@ axiosClient.interceptors.response.use(
 );
 
 export default axiosClient;
+

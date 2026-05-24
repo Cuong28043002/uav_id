@@ -14,8 +14,8 @@ import {
   ScrollView,
   Dimensions,
   Image,
-  Clipboard,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import axiosClient from '../../api/axiosClient';
@@ -502,7 +502,7 @@ const ApproveDrones = ({ navigation }) => {
                 <TouchableOpacity
                   style={styles.copyBtn}
                   onPress={() => {
-                    Clipboard.setString(item.identification_code);
+                    Clipboard.setStringAsync(item.identification_code);
                     Alert.alert('Đã sao chép', `Đã sao chép mã định danh "${item.identification_code}" vào khay nhớ tạm.`);
                   }}
                 >

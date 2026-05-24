@@ -133,6 +133,8 @@ const SearchDrones = ({ route, navigation }) => {
                   autoCapitalize="characters"
                   value={code}
                   onChangeText={setCode}
+                  returnKeyType="search"
+                  onSubmitEditing={() => handleSearch()}
                 />
                 {!!code && (
                   <TouchableOpacity 

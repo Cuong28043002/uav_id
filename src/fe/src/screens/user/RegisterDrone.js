@@ -95,9 +95,18 @@ const RegisterDrone = ({ navigation }) => {
 
   if (initLoading) {
     return (
-      <View style={[styles.container, styles.center]}>
-        <ActivityIndicator size="large" color="#0080FF" />
-      </View>
+      <ImageBackground
+        source={require('../../../assets/light_bg.png')}
+        style={{ flex: 1 }}
+        resizeMode="cover"
+      >
+        <LinearGradient
+          colors={['rgba(255, 255, 255, 0.7)', 'rgba(248, 250, 252, 0.85)', 'rgba(226, 232, 240, 0.95)']}
+          style={[styles.container, styles.center]}
+        >
+          <ActivityIndicator size="large" color="#0080FF" />
+        </LinearGradient>
+      </ImageBackground>
     );
   }
 
